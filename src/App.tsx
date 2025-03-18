@@ -119,7 +119,12 @@ function App() {
     e?.preventDefault();
     if (!searchParams.keyword.trim()) return;
 
-    const isNewSearch = !newPage; // 検索ボタンクリック時はtrue、無限スクロール時はfalse
+    // Close keyboard on mobile
+    if (searchInputRef.current) {
+      searchInputRef.current.blur();
+    }
+
+    const isNewSearch = !newPage;
     
     setIsLoading(true);
     setError(null);
@@ -157,11 +162,6 @@ function App() {
       
       if (!searchHistory.includes(searchParams.keyword)) {
         setSearchHistory(prev => [searchParams.keyword, ...prev.slice(0, 4)]);
-      }
-
-      // Close keyboard on mobile after search
-      if (searchInputRef.current) {
-        searchInputRef.current.blur();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
@@ -408,8 +408,17 @@ function App() {
                       enterKeyHint="search"
                       value={searchParams.keyword}
                       onChange={(e) => setSearchParams(prev => ({ ...prev, keyword: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (searchInputRef.current) {
+                            searchInputRef.current.blur();
+                          }
+                          handleSearch(e);
+                        }
+                      }}
                       placeholder="商品名を入力"
-                      className="w-full px-4 py-2 pr-16 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent [&::-webkit-search-cancel-button]:hidden"
+                      className="w-full px-4 py-2 pr-16 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent group-hover:line-clamp-none transition-all duration-200"
                     />
                     <div className="absolute right-2 top-2 flex gap-1">
                       {searchParams.keyword && (
