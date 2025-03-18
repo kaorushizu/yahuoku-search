@@ -119,10 +119,19 @@ function App() {
     e?.preventDefault();
     if (!searchParams.keyword.trim()) return;
 
-    const isNewSearch = searchParams.keyword !== currentSearchKeyword;
+    const isNewSearch = !newPage; // 検索ボタンクリック時はtrue、無限スクロール時はfalse
     
     setIsLoading(true);
     setError(null);
+
+    // 検索ボタンクリック時のみ結果をクリア
+    if (isNewSearch) {
+      setResults([]);
+      setCurrentSearchKeyword(searchParams.keyword);
+      setSelectedTags(new Set());
+      setSelectedItems(new Set());
+      setShowSelectedOnly(false);
+    }
 
     const updatedParams = {
       ...searchParams,
@@ -139,8 +148,6 @@ function App() {
       
       if (isNewSearch) {
         setResults(data.items);
-        setCurrentSearchKeyword(searchParams.keyword);
-        setSelectedTags(new Set()); // Reset selected tags on new search
       } else {
         setResults(prev => [...prev, ...data.items]);
       }
@@ -168,9 +175,31 @@ function App() {
 
   const loadMore = useCallback(async () => {
     if (isLoading || isLoadingMore || searchParams.page >= totalPages) return;
+    
     setIsLoadingMore(true);
-    await handleSearch(null as any, searchParams.page + 1);
-  }, [searchParams.page, totalPages, isLoading, isLoadingMore]);
+    const nextPage = searchParams.page + 1;
+    
+    try {
+      const updatedParams = {
+        ...searchParams,
+        page: nextPage,
+        seller: isCompanyOnly ? 'myniw58319' : searchParams.seller,
+      };
+      
+      const response = await fetch(buildSearchUrl(updatedParams));
+      if (!response.ok) throw new Error('検索中にエラーが発生しました');
+      
+      const data: ApiResponse = await response.json();
+      setResults(prev => [...prev, ...data.items]);
+      setTotalPages(data.page_total);
+      setTotalCount(data.total_count || data.items.length * data.page_total);
+      setSearchParams(updatedParams);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [searchParams, totalPages, isLoading, isLoadingMore, isCompanyOnly]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -361,7 +390,7 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">ヤフオク過去落札検索</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">ヤフオク相場検索</h1>
           <p className="text-gray-600">過去の落札価格をチェックして、適正価格を把握しましょう</p>
         </div>
 
@@ -380,7 +409,7 @@ function App() {
                       value={searchParams.keyword}
                       onChange={(e) => setSearchParams(prev => ({ ...prev, keyword: e.target.value }))}
                       placeholder="商品名を入力"
-                      className="w-full px-4 py-2 pr-16 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 pr-16 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent [&::-webkit-search-cancel-button]:hidden"
                     />
                     <div className="absolute right-2 top-2 flex gap-1">
                       {searchParams.keyword && (
@@ -772,7 +801,11 @@ function App() {
                         <div className="p-3">
                           <div className="flex items-start justify-between gap-1 mb-2">
                             <div className="space-y-2">
-                              <h3 className="text-sm font-medium text-gray-800 line-clamp-2">{item.商品名}</h3>
+                              <h3 
+                                className="text-sm font-medium text-gray-800 line-clamp-2 group-hover:line-clamp-none transition-all duration-200"
+                              >
+                                {item.商品名}
+                              </h3>
                               <div className="flex flex-wrap gap-1">
                                 {getProductTags(item.商品名).map((tag, index) => (
                                   <span
@@ -784,7 +817,6 @@ function App() {
                                 ))}
                               </div>
                             </div>
-                            <ExternalLink size={14} className="text-gray-400 flex-shrink-0" />
                           </div>
                           <div className="flex items-center justify-between">
                             <div className="text-xs text-gray-600 flex items-center gap-1">
@@ -805,12 +837,14 @@ function App() {
                   ))}
                 </div>
 
-                {/* Enhanced loading indicator for infinite scroll */}
+                {/* Loading indicator for infinite scroll */}
                 {!isLoading && searchParams.page < totalPages && (
                   <div ref={observerTarget} className="mt-8 mb-4">
-                    <div className="flex items-center justify-center gap-3 bg-white rounded-lg shadow p-4">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
-                      <span className="text-gray-600">次のページを読み込み中...</span>
+                    <div className="bg-white rounded-lg shadow p-4">
+                      <div className="flex items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                        <span className="text-gray-600">次のページを読み込み中...</span>
+                      </div>
                     </div>
                   </div>
                 )}
