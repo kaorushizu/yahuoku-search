@@ -506,6 +506,130 @@ function App() {
                 </div>
               )}
             </form>
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => setIsAdvancedSearch(!isAdvancedSearch)}
+                className={`flex items-center gap-1 px-4 py-2 rounded-full text-sm ${
+                  isAdvancedSearch || Object.values(searchParams).some(value => value && typeof value === 'string' && value.length > 0 && value !== searchParams.keyword)
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <SlidersHorizontal size={16} />
+                詳細検索
+              </button>
+            </div>
+            {isAdvancedSearch && (
+              <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      除外キーワード
+                    </label>
+                    <input
+                      type="text"
+                      value={searchParams.negative_keyword}
+                      onChange={(e) => setSearchParams(prev => ({ ...prev, negative_keyword: e.target.value }))}
+                      placeholder="除外するキーワード"
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      商品の状態
+                    </label>
+                    <select
+                      value={searchParams.status}
+                      onChange={(e) => setSearchParams(prev => ({ ...prev, status: e.target.value }))}
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">すべて</option>
+                      <option value="new">新品</option>
+                      <option value="used">中古</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      出品者ID
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchParams.seller}
+                        onChange={(e) => setSearchParams(prev => ({ ...prev, seller: e.target.value }))}
+                        placeholder="出品者のID"
+                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={isCompanyOnly}
+                      />
+                      <div className="absolute right-0 top-0 h-full flex items-center pr-3">
+                        <input
+                          type="checkbox"
+                          id="companyOnly"
+                          checked={isCompanyOnly}
+                          onChange={(e) => {
+                            setIsCompanyOnly(e.target.checked);
+                            if (e.target.checked) {
+                              setSearchParams(prev => ({ ...prev, seller: 'myniw58319' }));
+                            } else {
+                              setSearchParams(prev => ({ ...prev, seller: '' }));
+                            }
+                          }}
+                          className="h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="companyOnly" className="ml-2 text-sm text-gray-600">
+                          自社
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        最低価格
+                      </label>
+                      <input
+                        type="number"
+                        value={searchParams.min}
+                        onChange={(e) => setSearchParams(prev => ({ ...prev, min: e.target.value }))}
+                        placeholder="¥1000"
+                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        最高価格
+                      </label>
+                      <input
+                        type="number"
+                        value={searchParams.max}
+                        onChange={(e) => setSearchParams(prev => ({ ...prev, max: e.target.value }))}
+                        placeholder="¥5000"
+                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setSearchParams(prev => ({
+                        ...prev,
+                        negative_keyword: '',
+                        status: '',
+                        seller: '',
+                        min: '',
+                        max: ''
+                      }));
+                      setIsCompanyOnly(false);
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+                  >
+                    <X size={16} />
+                    詳細条件をクリア
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
