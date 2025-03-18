@@ -115,7 +115,7 @@ function App() {
   const observerTarget = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const [isTagsVisible, setIsTagsVisible] = useState(true);
+  const [isTagsVisible, setIsTagsVisible] = useState(window.innerWidth >= 768);
   const [isStatsVisible, setIsStatsVisible] = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const mainStatsRef = useRef<HTMLDivElement>(null);
@@ -419,52 +419,70 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsTagsVisible(window.innerWidth >= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       {results.length === 0 && !currentSearchKeyword ? (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">ヤフオク相場検索</h1>
           <p className="text-gray-600 text-lg mb-8">過去の落札商品から価格相場をリサーチ</p>
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-2xl px-4">
             <form onSubmit={handleSearch} className="relative">
-              <input
-                ref={searchInputRef}
-                type="text"
-                inputMode="search"
-                enterKeyHint="search"
-                value={searchParams.keyword}
-                onChange={(e) => setSearchParams(prev => ({ ...prev, keyword: e.target.value }))}
-                onFocus={() => setIsHistoryVisible(true)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (searchInputRef.current) {
-                      searchInputRef.current.blur();
+              <div className="relative">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  value={searchParams.keyword}
+                  onChange={(e) => setSearchParams(prev => ({ ...prev, keyword: e.target.value }))}
+                  onFocus={() => setIsHistoryVisible(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (searchInputRef.current) {
+                        searchInputRef.current.blur();
+                      }
+                      setIsHistoryVisible(false);
+                      handleSearch(e);
                     }
-                    setIsHistoryVisible(false);
-                    handleSearch(e);
-                  }
-                }}
-                placeholder="すべてのアイテムから探す"
-                className="w-full px-6 py-4 pr-16 text-lg border border-gray-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:shadow-md transition-shadow duration-200"
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
-                {searchParams.keyword && (
+                  }}
+                  placeholder="すべてのアイテムから探す"
+                  className="w-full px-6 py-4 pr-16 text-lg border border-gray-200 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:shadow-md transition-shadow duration-200 bg-white"
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
+                  {searchParams.keyword && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSearchParams(prev => ({ ...prev, keyword: '' }));
+                        if (searchInputRef.current) {
+                          searchInputRef.current.blur();
+                        }
+                        setIsHistoryVisible(false);
+                      }}
+                      className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
                   <button
-                    type="button"
-                    onClick={() => setSearchParams(prev => ({ ...prev, keyword: '' }))}
+                    type="submit"
                     className="text-gray-400 hover:text-gray-600 p-1"
+                    disabled={isLoading}
                   >
-                    <X size={20} />
+                    <Search size={20} />
                   </button>
-                )}
-                <button
-                  type="submit"
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                  disabled={isLoading}
-                >
-                  <Search size={20} />
-                </button>
+                </div>
               </div>
               {isHistoryVisible && searchHistory.length > 0 && (
                 <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
@@ -495,7 +513,7 @@ function App() {
           <header className="sticky top-0 z-40 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800">
             <div className="max-w-7xl mx-auto px-4">
               <div className="flex items-center h-14">
-                <h1 className="text-lg font-bold text-white mr-8 whitespace-nowrap">ヤフオク相場検索</h1>
+                <h1 className="hidden md:block text-lg font-bold text-white mr-8 whitespace-nowrap">ヤフオク相場検索</h1>
                 <div className="flex items-center flex-1 max-w-3xl gap-2">
                   <div className="relative flex-1" ref={searchContainerRef}>
                     <form onSubmit={handleSearch} className="relative flex items-center gap-2">
@@ -520,8 +538,24 @@ function App() {
                             }
                           }}
                           placeholder="すべてのアイテムから探す"
-                          className="w-full pl-9 pr-3 py-1.5 bg-gray-700/50 border border-gray-700 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-600 focus:border-gray-600"
+                          className="w-full pl-9 pr-10 py-1.5 bg-gray-700/50 border border-gray-700 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-600 focus:border-gray-600"
                         />
+                        {searchParams.keyword && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSearchParams(prev => ({ ...prev, keyword: '' }));
+                              if (searchInputRef.current) {
+                                searchInputRef.current.blur();
+                              }
+                              setIsHistoryVisible(false);
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
                       </div>
                       <button
                         type="submit"
@@ -529,11 +563,11 @@ function App() {
                         disabled={isLoading}
                       >
                         <Search size={16} />
-                        検索
+                        <span className="hidden md:inline">検索</span>
                       </button>
                     </form>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="hidden md:flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setIsAdvancedSearch(!isAdvancedSearch)}
                       className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs relative ${
@@ -585,7 +619,7 @@ function App() {
                     </button>
                   </div>
                 </div>
-                <div className="ml-8">
+                <div className="hidden md:block ml-8">
                   <div className="text-sm text-gray-300">
                     <span className="font-bold text-lg text-white">{totalCount.toLocaleString()}</span>
                     <span className="mx-1">件中</span>
@@ -593,10 +627,17 @@ function App() {
                     <span className="mx-1">件表示</span>
                   </div>
                 </div>
-                <div className="ml-4">
+                <div className="flex items-center gap-2 ml-4">
+                  <button
+                    onClick={() => setIsAdvancedSearch(!isAdvancedSearch)}
+                    className="md:hidden p-2 rounded hover:bg-gray-800 transition-colors duration-200"
+                    title="詳細検索"
+                  >
+                    <SlidersHorizontal size={20} className="text-gray-400 hover:text-gray-300" />
+                  </button>
                   <button
                     onClick={() => setShowHelp(true)}
-                    className="p-2 rounded hover:bg-gray-800 transition-colors duration-200"
+                    className="hidden md:block p-2 rounded hover:bg-gray-800 transition-colors duration-200"
                     title="ヘルプを表示"
                   >
                     <HelpCircle size={20} className="text-gray-400 hover:text-gray-300" />
@@ -605,90 +646,92 @@ function App() {
               </div>
               {isAdvancedSearch && (
                 <div className="py-3 border-t border-gray-800">
-                  <div className="grid grid-cols-5 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
-                        除外キーワード
-                      </label>
-                      <input
-                        type="text"
-                        value={searchParams.negative_keyword}
-                        onChange={(e) => setSearchParams(prev => ({ ...prev, negative_keyword: e.target.value }))}
-                        placeholder="除外するキーワード"
-                        className="w-full px-3 py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
-                        商品の状態
-                      </label>
-                      <select
-                        value={searchParams.status}
-                        onChange={(e) => setSearchParams(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full px-3 py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white"
-                      >
-                        <option value="">すべて</option>
-                        <option value="new">新品</option>
-                        <option value="used">中古</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
-                        出品者ID
-                      </label>
-                      <div className="relative">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="space-y-4 md:space-y-0">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">
+                          除外キーワード
+                        </label>
                         <input
                           type="text"
-                          value={searchParams.seller}
-                          onChange={(e) => setSearchParams(prev => ({ ...prev, seller: e.target.value }))}
-                          placeholder="出品者のID"
-                          className="w-full px-3 py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
-                          disabled={isCompanyOnly}
+                          value={searchParams.negative_keyword}
+                          onChange={(e) => setSearchParams(prev => ({ ...prev, negative_keyword: e.target.value }))}
+                          placeholder="除外するキーワード"
+                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
                         />
-                        <div className="absolute right-0 top-0 h-full flex items-center pr-2">
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">
+                          商品の状態
+                        </label>
+                        <select
+                          value={searchParams.status}
+                          onChange={(e) => setSearchParams(prev => ({ ...prev, status: e.target.value }))}
+                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white"
+                        >
+                          <option value="">すべて</option>
+                          <option value="new">新品</option>
+                          <option value="used">中古</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">
+                          出品者ID
+                        </label>
+                        <div className="relative">
                           <input
-                            type="checkbox"
-                            id="companyOnly"
-                            checked={isCompanyOnly}
-                            onChange={(e) => {
-                              setIsCompanyOnly(e.target.checked);
-                              if (e.target.checked) {
-                                setSearchParams(prev => ({ ...prev, seller: 'myniw58319' }));
-                              } else {
-                                setSearchParams(prev => ({ ...prev, seller: '' }));
-                              }
-                            }}
-                            className="h-3 w-3 text-gray-600 bg-gray-800/60 border-gray-700 rounded"
+                            type="text"
+                            value={searchParams.seller}
+                            onChange={(e) => setSearchParams(prev => ({ ...prev, seller: e.target.value }))}
+                            placeholder="出品者のID"
+                            className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                            disabled={isCompanyOnly}
                           />
-                          <label htmlFor="companyOnly" className="ml-1 text-xs text-gray-400">
-                            自社
-                          </label>
+                          <div className="absolute right-0 top-0 h-full flex items-center pr-2">
+                            <input
+                              type="checkbox"
+                              id="companyOnly"
+                              checked={isCompanyOnly}
+                              onChange={(e) => {
+                                setIsCompanyOnly(e.target.checked);
+                                if (e.target.checked) {
+                                  setSearchParams(prev => ({ ...prev, seller: 'myniw58319' }));
+                                } else {
+                                  setSearchParams(prev => ({ ...prev, seller: '' }));
+                                }
+                              }}
+                              className="h-3 w-3 text-gray-600 bg-gray-800/60 border-gray-700 rounded"
+                            />
+                            <label htmlFor="companyOnly" className="ml-1 text-xs text-gray-400">
+                              自社
+                            </label>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
-                        最低価格
-                      </label>
-                      <input
-                        type="number"
-                        value={searchParams.min}
-                        onChange={(e) => setSearchParams(prev => ({ ...prev, min: e.target.value }))}
-                        placeholder="¥1000"
-                        className="w-full px-3 py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">
-                        最高価格
-                      </label>
-                      <input
-                        type="number"
-                        value={searchParams.max}
-                        onChange={(e) => setSearchParams(prev => ({ ...prev, max: e.target.value }))}
-                        placeholder="¥5000"
-                        className="w-full px-3 py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
-                      />
+                      <div>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">
+                          最低価格
+                        </label>
+                        <input
+                          type="number"
+                          value={searchParams.min}
+                          onChange={(e) => setSearchParams(prev => ({ ...prev, min: e.target.value }))}
+                          placeholder="¥1000"
+                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">
+                          最高価格
+                        </label>
+                        <input
+                          type="number"
+                          value={searchParams.max}
+                          onChange={(e) => setSearchParams(prev => ({ ...prev, max: e.target.value }))}
+                          placeholder="¥5000"
+                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="mt-3 flex justify-end">
@@ -816,7 +859,7 @@ function App() {
                                   if (groupTags.length === 0) return null;
 
                                   return (
-                                    <div key={group} className="bg-gray-50 rounded-md p-2">
+                                    <div key={group} className="bg-gray-100 rounded-md p-2">
                                       <div className="flex items-center gap-1.5 mb-1.5">
                                         <div className="h-1.5 w-1.5 rounded-full bg-gray-400"></div>
                                         <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">{group}</div>
@@ -839,7 +882,7 @@ function App() {
                                             <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-medium ${
                                               selectedTags.has(tag.keyword) 
                                                 ? 'bg-white/80 text-gray-700' 
-                                                : 'bg-gray-50 text-gray-500'
+                                                : 'bg-gray-100 text-gray-500'
                                             }`}>
                                               {count}
                                             </span>
@@ -871,19 +914,19 @@ function App() {
                         </button>
                         {isStatsVisible && (
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-gray-50 rounded-md p-2">
+                            <div className="bg-gray-100 rounded-md p-2">
                               <div className="text-sm text-gray-600 mb-0.5">中央値</div>
                               <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.median.toLocaleString()}</div>
                             </div>
-                            <div className="bg-gray-50 rounded-md p-2">
+                            <div className="bg-gray-100 rounded-md p-2">
                               <div className="text-sm text-gray-600 mb-0.5">平均値</div>
                               <div className="font-bold text-gray-900 text-lg text-center">¥{Math.round(statistics.average).toLocaleString()}</div>
                             </div>
-                            <div className="bg-gray-50 rounded-md p-2">
+                            <div className="bg-gray-100 rounded-md p-2">
                               <div className="text-sm text-gray-600 mb-0.5">最高値</div>
                               <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.max.toLocaleString()}</div>
                             </div>
-                            <div className="bg-gray-50 rounded-md p-2">
+                            <div className="bg-gray-100 rounded-md p-2">
                               <div className="text-sm text-gray-600 mb-0.5">最安値</div>
                               <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.min.toLocaleString()}</div>
                             </div>
@@ -910,22 +953,49 @@ function App() {
                   ) : results.length > 0 ? (
                     <>
                       <div className="space-y-4">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 bg-white rounded-lg shadow p-3">
+                          <div className="text-sm text-gray-600">
+                            <span className="font-bold text-gray-900">{totalCount.toLocaleString()}</span>
+                            <span className="mx-1">件中</span>
+                            <span className="font-bold text-gray-900">{filteredResults.length.toLocaleString()}</span>
+                            <span className="mx-1">件表示</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSortOrder(order => {
+                                  if (order === 'none') return 'asc';
+                                  if (order === 'asc') return 'desc';
+                                  return 'none';
+                                });
+                              }}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs ${
+                                sortOrder === 'none' 
+                                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
+                                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                              }`}
+                            >
+                              {sortOrder === 'asc' ? <ArrowUp size={14} /> : sortOrder === 'desc' ? <ArrowDown size={14} /> : <ArrowUpDown size={14} />}
+                              {sortOrder === 'none' ? '価格順' : sortOrder === 'asc' ? '価格: 安い順' : '価格: 高い順'}
+                            </button>
+                          </div>
+                        </div>
                         {statistics && (
-                          <div className="bg-white rounded-lg shadow p-3">
+                          <div className="hidden md:block bg-white rounded-lg shadow p-3">
                             <div className="grid grid-cols-4 gap-2">
-                              <div className="bg-gray-50 rounded-md p-2">
+                              <div className="bg-gray-100 rounded-md p-2">
                                 <div className="text-sm text-gray-600 mb-0.5">中央値</div>
                                 <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.median.toLocaleString()}</div>
                               </div>
-                              <div className="bg-gray-50 rounded-md p-2">
+                              <div className="bg-gray-100 rounded-md p-2">
                                 <div className="text-sm text-gray-600 mb-0.5">平均値</div>
                                 <div className="font-bold text-gray-900 text-lg text-center">¥{Math.round(statistics.average).toLocaleString()}</div>
                               </div>
-                              <div className="bg-gray-50 rounded-md p-2">
+                              <div className="bg-gray-100 rounded-md p-2">
                                 <div className="text-sm text-gray-600 mb-0.5">最高値</div>
                                 <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.max.toLocaleString()}</div>
                               </div>
-                              <div className="bg-gray-50 rounded-md p-2">
+                              <div className="bg-gray-100 rounded-md p-2">
                                 <div className="text-sm text-gray-600 mb-0.5">最安値</div>
                                 <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.min.toLocaleString()}</div>
                               </div>
@@ -1081,19 +1151,19 @@ function App() {
             </div>
             {selectedStatistics && (
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-gray-50 rounded-md p-2">
+                <div className="bg-gray-100 rounded-md p-2">
                   <div className="text-sm text-gray-600 mb-0.5">中央値</div>
                   <div className="font-bold text-gray-900 text-lg">¥{selectedStatistics.median.toLocaleString()}</div>
                 </div>
-                <div className="bg-gray-50 rounded-md p-2">
+                <div className="bg-gray-100 rounded-md p-2">
                   <div className="text-sm text-gray-600 mb-0.5">平均価格</div>
                   <div className="font-bold text-gray-900 text-lg">¥{Math.round(selectedStatistics.average).toLocaleString()}</div>
                 </div>
-                <div className="bg-gray-50 rounded-md p-2">
+                <div className="bg-gray-100 rounded-md p-2">
                   <div className="text-sm text-gray-600 mb-0.5">最高値</div>
                   <div className="font-bold text-gray-900 text-lg">¥{selectedStatistics.max.toLocaleString()}</div>
                 </div>
-                <div className="bg-gray-50 rounded-md p-2">
+                <div className="bg-gray-100 rounded-md p-2">
                   <div className="text-sm text-gray-600 mb-0.5">最安値</div>
                   <div className="font-bold text-gray-900 text-lg">¥{selectedStatistics.min.toLocaleString()}</div>
                 </div>
