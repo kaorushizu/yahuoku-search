@@ -1578,11 +1578,40 @@ function App() {
                                             <img
                                               src={item.画像URL}
                                               alt={item.商品名}
-                                              className="w-16 h-16 object-cover bg-white rounded border"
+                                              className="w-16 h-16 object-cover bg-white rounded border cursor-pointer hover:ring-2 hover:ring-blue-500"
                                               onError={(e) => {
                                                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
                                               }}
+                                              onMouseMove={(e) => {
+                                                const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                                                if (tooltip) {
+                                                  const rect = e.currentTarget.getBoundingClientRect();
+                                                  tooltip.style.top = `${rect.top}px`;
+                                                  tooltip.style.left = `${rect.left}px`;
+                                                  tooltip.style.opacity = '1';
+                                                  tooltip.style.visibility = 'visible';
+                                                }
+                                              }}
+                                              onMouseLeave={(e) => {
+                                                const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                                                if (tooltip) {
+                                                  tooltip.style.opacity = '0';
+                                                  tooltip.style.visibility = 'hidden';
+                                                }
+                                              }}
                                             />
+                                            <div className="fixed opacity-0 invisible transition-all duration-200 z-50 pointer-events-none" style={{ transform: 'translateX(-100%)', marginLeft: '-20px' }}>
+                                              <div className="bg-white rounded-lg shadow-xl p-2">
+                                                <img
+                                                  src={item.画像URL}
+                                                  alt={item.商品名}
+                                                  className="w-64 h-64 object-contain"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
                                           </div>
                                           <div className="flex-1 min-w-0">
                                             <a
