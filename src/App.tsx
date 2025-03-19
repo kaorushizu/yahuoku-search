@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Search, History, Package2, CircleDollarSign, ChevronLeft, ChevronRight, ExternalLink, ArrowUpDown, Calculator, ArrowUp, ArrowDown, ChevronDown, ChevronUp, X, ArrowUpToLine, CheckCircle2, Trash2, Tag, Calendar, JapaneseYen, HelpCircle, SlidersHorizontal } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import HelpPage from './components/HelpPage';
 
 interface AuctionItem {
@@ -30,8 +30,13 @@ interface SearchParams {
 }
 
 interface FilterOptions {
-  multipleBids: boolean;
-  noJunk: boolean;
+  selectedTags: string[];
+  excludeMultipleBids: boolean;
+  excludeJunk: boolean;
+  excludeKeywords: string[];
+  excludeSets: boolean;
+  excludeNew: boolean;
+  filterKeywords: string[];
 }
 
 interface Statistics {
@@ -58,24 +63,41 @@ type SortOrder = 'none' | 'asc' | 'desc';
 
 const PRODUCT_TAGS: ProductTag[] = [
   // 状態関連
-  { keyword: '新品', label: '新品', color: 'bg-green-100 text-green-800', group: '状態' },
-  { keyword: '未開封', label: '未開封', color: 'bg-teal-100 text-teal-800', group: '状態' },
-  { keyword: '未使用', label: '未使用', color: 'bg-emerald-100 text-emerald-800', group: '状態' },
-  { keyword: '美品', label: '美品', color: 'bg-blue-100 text-blue-800', group: '状態' },
+  { keyword: '新品', label: '新品', color: 'bg-green-600/90 text-white', group: '状態' },
+  { keyword: '未開封', label: '未開封', color: 'bg-teal-600/90 text-white', group: '状態' },
+  { keyword: '未使用', label: '未使用', color: 'bg-emerald-600/90 text-white', group: '状態' },
+  { keyword: '美品', label: '美品', color: 'bg-blue-600/90 text-white', group: '状態' },
 
   // ジャンク関連
-  { keyword: 'ジャンク', label: 'ジャンク', color: 'bg-red-100 text-red-800', group: 'ジャンク' },
-  { keyword: '現状', label: '現状品', color: 'bg-orange-100 text-orange-800', group: 'ジャンク' },
-  { keyword: '訳あり', label: '訳あり', color: 'bg-amber-100 text-amber-800', group: 'ジャンク' },
+  { keyword: 'ジャンク', label: 'ジャンク', color: 'bg-red-600/90 text-white', group: 'ジャンク' },
+  { keyword: '現状', label: '現状品', color: 'bg-orange-600/90 text-white', group: 'ジャンク' },
+  { keyword: '訳あり', label: '訳あり', color: 'bg-amber-600/90 text-white', group: 'ジャンク' },
 
   // まとめ関連
-  { keyword: 'まとめ', label: 'まとめ', color: 'bg-indigo-100 text-indigo-800', group: 'まとめ' },
-  { keyword: 'セット', label: 'セット', color: 'bg-violet-100 text-violet-800', group: 'まとめ' },
+  { keyword: 'まとめ', label: 'まとめ', color: 'bg-indigo-600/90 text-white', group: 'まとめ' },
+  { keyword: 'セット', label: 'セット', color: 'bg-violet-600/90 text-white', group: 'まとめ' },
 
   // 送料関連
-  { keyword: '送料無料', label: '送料無料', color: 'bg-purple-100 text-purple-800', group: '送料' },
-  { keyword: '送料込', label: '送料込み', color: 'bg-fuchsia-100 text-fuchsia-800', group: '送料' },
+  { keyword: '送料無料', label: '送料無料', color: 'bg-purple-600/90 text-white', group: '送料' },
+  { keyword: '送料込', label: '送料込み', color: 'bg-fuchsia-600/90 text-white', group: '送料' },
 ];
+
+interface TooltipProps {
+  text: string;
+  children: React.ReactNode;
+}
+
+const Tooltip: React.FC<TooltipProps> = ({ text, children }) => {
+  return (
+    <div className="group relative inline-block">
+      {children}
+      <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-900 rounded whitespace-nowrap">
+        {text}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   const getAuctionUrl = (auctionId: string) => {
@@ -105,8 +127,13 @@ function App() {
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
   const [isCompanyOnly, setIsCompanyOnly] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-    multipleBids: false,
-    noJunk: false,
+    selectedTags: [],
+    excludeMultipleBids: false,
+    excludeJunk: false,
+    excludeKeywords: [],
+    excludeSets: false,
+    excludeNew: false,
+    filterKeywords: []
   });
   const [sortOrder, setSortOrder] = useState<SortOrder>('none');
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
@@ -120,6 +147,9 @@ function App() {
   const [showSidePanel, setShowSidePanel] = useState(false);
   const mainStatsRef = useRef<HTMLDivElement>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [newFilterKeyword, setNewFilterKeyword] = useState('');
+  const [newExcludeKeyword, setNewExcludeKeyword] = useState('');
+  const [showTags, setShowTags] = useState(false);
 
   const buildSearchUrl = (params: SearchParams) => {
     const urlParams = new URLSearchParams();
@@ -129,6 +159,22 @@ function App() {
       }
     });
     return `https://revathis-api.vercel.app/api/aucfree?${urlParams.toString()}`;
+  };
+
+  const resetAllFilters = () => {
+    setSelectedTags(new Set());
+    setFilterKeyword('');
+    setNewFilterKeyword('');
+    setNewExcludeKeyword('');
+    setFilterOptions({
+      selectedTags: [],
+      excludeMultipleBids: false,
+      excludeJunk: false,
+      excludeKeywords: [],
+      excludeSets: false,
+      excludeNew: false,
+      filterKeywords: []
+    });
   };
 
   const handleSearch = async (e: React.FormEvent, newPage?: number) => {
@@ -148,11 +194,11 @@ function App() {
     setIsLoading(true);
     setError(null);
 
-    // 検索ボタンクリック時のみ結果をクリア
+    // 新しい検索時に全ての絞り込みをリセット
     if (isNewSearch) {
+      resetAllFilters();
       setResults([]);
       setCurrentSearchKeyword(searchParams.keyword);
-      setSelectedTags(new Set());
       setSelectedItems(new Set());
       setShowSelectedOnly(false);
     }
@@ -321,24 +367,48 @@ function App() {
     }
 
     // Apply keyword filter
-    if (filterKeyword.trim()) {
-      const keywords = filterKeyword.toLowerCase().split(/\s+/);
+    if (filterOptions.filterKeywords.length > 0) {
       filtered = filtered.filter(item => 
-        keywords.every(keyword => 
-          item.商品名.toLowerCase().includes(keyword)
+        filterOptions.filterKeywords.every(keyword => 
+          item.商品名.toLowerCase().includes(keyword.toLowerCase())
+        )
+      );
+    }
+
+    // Apply exclude keyword filter
+    if (filterOptions.excludeKeywords.length > 0) {
+      filtered = filtered.filter(item => 
+        !filterOptions.excludeKeywords.some(keyword => 
+          item.商品名.toLowerCase().includes(keyword.toLowerCase())
         )
       );
     }
 
     // Apply multiple bids filter
-    if (filterOptions.multipleBids) {
+    if (filterOptions.excludeMultipleBids) {
       filtered = filtered.filter(item => item.入札数 >= 2);
     }
 
     // Apply no junk filter
-    if (filterOptions.noJunk) {
+    if (filterOptions.excludeJunk) {
       filtered = filtered.filter(item => 
         !item.商品名.includes('ジャンク') && !item.商品名.includes('現状品')
+      );
+    }
+
+    // Apply no sets filter
+    if (filterOptions.excludeSets) {
+      filtered = filtered.filter(item => 
+        !item.商品名.includes('まとめ') && !item.商品名.includes('セット')
+      );
+    }
+
+    // Apply no new items filter
+    if (filterOptions.excludeNew) {
+      filtered = filtered.filter(item => 
+        !item.商品名.includes('新品') && 
+        !item.商品名.includes('未使用') && 
+        !item.商品名.includes('未開封')
       );
     }
 
@@ -353,7 +423,7 @@ function App() {
     }
 
     return filtered;
-  }, [results, filterOptions, sortOrder, filterKeyword, selectedItems, showSelectedOnly, selectedTags]);
+  }, [results, filterOptions, sortOrder, selectedItems, showSelectedOnly, selectedTags]);
 
   const calculateStatistics = (items: AuctionItem[]): Statistics | null => {
     if (items.length === 0) return null;
@@ -521,95 +591,93 @@ function App() {
             </div>
             {isAdvancedSearch && (
               <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      除外キーワード
-                    </label>
-                    <input
-                      type="text"
-                      value={searchParams.negative_keyword}
-                      onChange={(e) => setSearchParams(prev => ({ ...prev, negative_keyword: e.target.value }))}
-                      placeholder="除外するキーワード"
-                      className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      商品の状態
-                    </label>
-                    <select
-                      value={searchParams.status}
-                      onChange={(e) => setSearchParams(prev => ({ ...prev, status: e.target.value }))}
-                      className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">すべて</option>
-                      <option value="new">新品</option>
-                      <option value="used">中古</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      出品者ID
-                    </label>
-                    <div className="relative">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-4 md:space-y-0 md:flex md:gap-4 w-full">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-300 mb-1">
+                        除外キーワード
+                      </label>
                       <input
                         type="text"
-                        value={searchParams.seller}
-                        onChange={(e) => setSearchParams(prev => ({ ...prev, seller: e.target.value }))}
-                        placeholder="出品者のID"
-                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        disabled={isCompanyOnly}
+                        value={searchParams.negative_keyword}
+                        onChange={(e) => setSearchParams(prev => ({ ...prev, negative_keyword: e.target.value }))}
+                        placeholder="除外するキーワード"
+                        className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
                       />
-                      <div className="absolute right-0 top-0 h-full flex items-center pr-3">
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-300 mb-1">
+                        商品の状態（一部対応）
+                      </label>
+                      <select
+                        value={searchParams.status}
+                        onChange={(e) => setSearchParams(prev => ({ ...prev, status: e.target.value }))}
+                        className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white"
+                      >
+                        <option value="">すべて</option>
+                        <option value="new">新品</option>
+                        <option value="used">中古</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-300 mb-1">
+                        出品者ID
+                      </label>
+                      <div className="relative">
                         <input
-                          type="checkbox"
-                          id="companyOnly"
-                          checked={isCompanyOnly}
-                          onChange={(e) => {
-                            setIsCompanyOnly(e.target.checked);
-                            if (e.target.checked) {
-                              setSearchParams(prev => ({ ...prev, seller: 'myniw58319' }));
-                            } else {
-                              setSearchParams(prev => ({ ...prev, seller: '' }));
-                            }
-                          }}
-                          className="h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                          type="text"
+                          value={searchParams.seller}
+                          onChange={(e) => setSearchParams(prev => ({ ...prev, seller: e.target.value }))}
+                          placeholder="出品者のID"
+                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                          disabled={isCompanyOnly}
                         />
-                        <label htmlFor="companyOnly" className="ml-2 text-sm text-gray-600">
-                          自社
-                        </label>
+                        <div className="absolute right-0 top-0 h-full flex items-center pr-2">
+                          <input
+                            type="checkbox"
+                            id="companyOnly"
+                            checked={isCompanyOnly}
+                            onChange={(e) => {
+                              setIsCompanyOnly(e.target.checked);
+                              if (e.target.checked) {
+                                setSearchParams(prev => ({ ...prev, seller: 'myniw58319' }));
+                              } else {
+                                setSearchParams(prev => ({ ...prev, seller: '' }));
+                              }
+                            }}
+                            className="h-3 w-3 text-gray-600 bg-gray-800/60 border-gray-700 rounded"
+                          />
+                          <label htmlFor="companyOnly" className="ml-1 text-xs text-gray-400">
+                            自社
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-300 mb-1">
+                        価格範囲
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={searchParams.min}
+                          onChange={(e) => setSearchParams(prev => ({ ...prev, min: e.target.value }))}
+                          placeholder="¥1000"
+                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                        />
+                        <span className="text-gray-400">~</span>
+                        <input
+                          type="number"
+                          value={searchParams.max}
+                          onChange={(e) => setSearchParams(prev => ({ ...prev, max: e.target.value }))}
+                          placeholder="¥5000"
+                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                        />
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        最低価格
-                      </label>
-                      <input
-                        type="number"
-                        value={searchParams.min}
-                        onChange={(e) => setSearchParams(prev => ({ ...prev, min: e.target.value }))}
-                        placeholder="¥1000"
-                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        最高価格
-                      </label>
-                      <input
-                        type="number"
-                        value={searchParams.max}
-                        onChange={(e) => setSearchParams(prev => ({ ...prev, max: e.target.value }))}
-                        placeholder="¥5000"
-                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
                 </div>
-                <div className="mt-4 flex justify-end">
+                <div className="mt-3 flex justify-end">
                   <button
                     onClick={() => {
                       setSearchParams(prev => ({
@@ -622,9 +690,9 @@ function App() {
                       }));
                       setIsCompanyOnly(false);
                     }}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs font-medium transition-colors duration-200 flex items-center gap-1"
                   >
-                    <X size={16} />
+                    <X size={14} />
                     詳細条件をクリア
                   </button>
                 </div>
@@ -770,9 +838,9 @@ function App() {
               </div>
               {isAdvancedSearch && (
                 <div className="py-3 border-t border-gray-800">
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="space-y-4 md:space-y-0">
-                      <div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-4 md:space-y-0 md:flex md:gap-4 w-full">
+                      <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-300 mb-1">
                           除外キーワード
                         </label>
@@ -784,9 +852,9 @@ function App() {
                           className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
                         />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-300 mb-1">
-                          商品の状態
+                          商品の状態（一部対応）
                         </label>
                         <select
                           value={searchParams.status}
@@ -798,7 +866,7 @@ function App() {
                           <option value="used">中古</option>
                         </select>
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-300 mb-1">
                           出品者ID
                         </label>
@@ -832,29 +900,27 @@ function App() {
                           </div>
                         </div>
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-300 mb-1">
-                          最低価格
+                          価格範囲
                         </label>
-                        <input
-                          type="number"
-                          value={searchParams.min}
-                          onChange={(e) => setSearchParams(prev => ({ ...prev, min: e.target.value }))}
-                          placeholder="¥1000"
-                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-300 mb-1">
-                          最高価格
-                        </label>
-                        <input
-                          type="number"
-                          value={searchParams.max}
-                          onChange={(e) => setSearchParams(prev => ({ ...prev, max: e.target.value }))}
-                          placeholder="¥5000"
-                          className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={searchParams.min}
+                            onChange={(e) => setSearchParams(prev => ({ ...prev, min: e.target.value }))}
+                            placeholder="¥1000"
+                            className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                          />
+                          <span className="text-gray-400">~</span>
+                          <input
+                            type="number"
+                            value={searchParams.max}
+                            onChange={(e) => setSearchParams(prev => ({ ...prev, max: e.target.value }))}
+                            placeholder="¥5000"
+                            className="w-full px-3 py-2 md:py-1.5 bg-gray-800/60 border border-gray-700 rounded text-sm text-white placeholder-gray-400"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -898,25 +964,36 @@ function App() {
                           <div className="flex items-center gap-1.5">
                             <Tag size={16} />
                             絞り込み
-                            {(selectedTags.size > 0 || filterKeyword || filterOptions.multipleBids || filterOptions.noJunk) && (
-                              <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full text-xs">
-                                {[
-                                  selectedTags.size > 0 ? `タグ${selectedTags.size}` : null,
-                                  filterKeyword ? 'キーワード' : null,
-                                  filterOptions.multipleBids ? '複数入札' : null,
-                                  filterOptions.noJunk ? 'ジャンク除外' : null
-                                ].filter(Boolean).length}
-                              </span>
-                            )}
+                            <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                              selectedTags.size > 0 || filterKeyword || filterOptions.excludeMultipleBids || filterOptions.excludeJunk || filterOptions.excludeSets || filterOptions.excludeNew
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {results.length.toLocaleString()}件
+                              {(selectedTags.size > 0 || filterKeyword || filterOptions.excludeMultipleBids || filterOptions.excludeJunk || filterOptions.excludeSets || filterOptions.excludeNew) && (
+                                <>
+                                  <span className="mx-0.5">→</span>
+                                  {filteredResults.length.toLocaleString()}件
+                                </>
+                              )}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            {(selectedTags.size > 0 || filterKeyword || filterOptions.multipleBids || filterOptions.noJunk) && (
+                            {(selectedTags.size > 0 || filterKeyword || filterOptions.excludeMultipleBids || filterOptions.excludeJunk || filterOptions.excludeSets) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedTags(new Set());
                                   setFilterKeyword('');
-                                  setFilterOptions({ multipleBids: false, noJunk: false });
+                                  setFilterOptions({
+                                    selectedTags: [],
+                                    excludeMultipleBids: false,
+                                    excludeJunk: false,
+                                    excludeKeywords: [],
+                                    excludeSets: false,
+                                    excludeNew: false,
+                                    filterKeywords: []
+                                  });
                                 }}
                                 className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-0.5"
                               >
@@ -928,96 +1005,257 @@ function App() {
                           </div>
                         </button>
                         {isTagsVisible && (
-                          <div className="space-y-3">
-                            {/* Filter options */}
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => setFilterOptions(prev => ({ ...prev, multipleBids: !prev.multipleBids }))}
-                                  className={`flex-1 px-3 py-2 border rounded-md text-sm transition-colors duration-200 ${
-                                    filterOptions.multipleBids
-                                      ? 'bg-blue-50 text-blue-700 border-blue-500'
-                                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  複数入札のみ
-                                </button>
-                                <button
-                                  onClick={() => setFilterOptions(prev => ({ ...prev, noJunk: !prev.noJunk }))}
-                                  className={`flex-1 px-3 py-2 border rounded-md text-sm transition-colors duration-200 ${
-                                    filterOptions.noJunk
-                                      ? 'bg-blue-50 text-blue-700 border-blue-500'
-                                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  ジャンクを除く
-                                </button>
-                              </div>
-                              <div className="relative">
-                                <Tag size={16} className="absolute left-3 top-2.5 text-gray-400" />
-                                <input
-                                  type="text"
-                                  value={filterKeyword}
-                                  onChange={(e) => setFilterKeyword(e.target.value)}
-                                  placeholder="キーワードで絞込み"
-                                  className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-md"
-                                />
-                                {filterKeyword && (
-                                  <button
-                                    onClick={() => setFilterKeyword('')}
-                                    className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+                          <div className="space-y-4">
+                              {/* 含む系 */}
+                              <div className="space-y-4">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-blue-400"></div>
+                                  <div className="text-xs font-bold text-gray-600">含む</div>
+                                </div>
 
-                            <div className="border-t border-gray-200 my-3"></div>
-
-                            {/* Product tags */}
-                            {availableTags.length > 0 && (
-                              <div className="space-y-2">
-                                {(['状態', 'ジャンク', 'まとめ', '送料'] as const).map(group => {
-                                  const groupTags = availableTags.filter(({ tag }) => tag.group === group);
-                                  if (groupTags.length === 0) return null;
-
-                                  return (
-                                    <div key={group} className="bg-gray-100 rounded-md p-2">
-                                      <div className="flex items-center gap-1.5 mb-1.5">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-gray-400"></div>
-                                        <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">{group}</div>
-                                      </div>
-                                      <div className="flex flex-wrap gap-1">
-                                        {groupTags.map(({ tag, count }) => (
+                                {/* 含むキーワード */}
+                                <div className="space-y-2">
+                                  <div className="relative">
+                                    <Tag size={16} className="absolute left-3 top-2.5 text-gray-400" />
+                                    <input
+                                      type="text"
+                                      value={newFilterKeyword}
+                                      onChange={(e) => setNewFilterKeyword(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && newFilterKeyword.trim()) {
+                                          setFilterOptions(prev => ({
+                                            ...prev,
+                                            filterKeywords: [...prev.filterKeywords, newFilterKeyword.trim()]
+                                          }));
+                                          setNewFilterKeyword('');
+                                        }
+                                      }}
+                                      placeholder="含むキーワード"
+                                      className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-md"
+                                    />
+                                    {newFilterKeyword && (
+                                      <button
+                                        onClick={() => {
+                                          if (newFilterKeyword.trim()) {
+                                            setFilterOptions(prev => ({
+                                              ...prev,
+                                              filterKeywords: [...prev.filterKeywords, newFilterKeyword.trim()]
+                                            }));
+                                            setNewFilterKeyword('');
+                                          }
+                                        }}
+                                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                                      >
+                                        <CheckCircle2 size={16} />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {filterOptions.filterKeywords.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {filterOptions.filterKeywords.map((keyword, index) => (
+                                        <span
+                                          key={index}
+                                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs"
+                                        >
+                                          {keyword}
                                           <button
-                                            key={tag.keyword}
-                                            onClick={() => toggleTagFilter(tag.keyword)}
-                                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                                              selectedTags.has(tag.keyword)
-                                                ? `${tag.color.replace('bg-', 'bg-opacity-100 ')} shadow-sm ring-1 ring-inset ring-opacity-50`
-                                                : `bg-white ${tag.color.replace('bg-', 'hover:')}`
-                                            }`}
+                                            onClick={() => setFilterOptions(prev => ({
+                                              ...prev,
+                                              filterKeywords: prev.filterKeywords.filter((_, i) => i !== index)
+                                            }))}
+                                            className="text-blue-500 hover:text-blue-700"
                                           >
-                                            {selectedTags.has(tag.keyword) && (
-                                              <CheckCircle2 size={12} className="flex-shrink-0" />
-                                            )}
-                                            <span className="font-medium">{tag.label}</span>
-                                            <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-medium ${
-                                              selectedTags.has(tag.keyword) 
-                                                ? 'bg-white/80 text-gray-700' 
-                                                : 'bg-gray-100 text-gray-500'
-                                            }`}>
-                                              {count}
-                                            </span>
+                                            ×
                                           </button>
-                                        ))}
-                                      </div>
+                                        </span>
+                                      ))}
                                     </div>
-                                  );
-                                })}
+                                  )}
+                                </div>
+
+                                {/* タグ絞り込み */}
+                                <div className="space-y-2">
+                                  <button
+                                    onClick={() => setShowTags(!showTags)}
+                                    className="flex items-center justify-end w-full text-xs text-gray-500 hover:text-gray-700"
+                                  >
+                                    タグで絞り込む
+                                    {showTags ? <ChevronUp size={14} className="ml-1" /> : <ChevronDown size={14} className="ml-1" />}
+                                  </button>
+                                  {showTags && availableTags.length > 0 && (
+                                    <div className="space-y-2">
+                                      {(['状態', 'ジャンク', 'まとめ', '送料'] as const).map(group => {
+                                        const groupTags = availableTags.filter(({ tag }) => tag.group === group);
+                                        if (groupTags.length === 0) return null;
+
+                                        return (
+                                          <div key={group} className="bg-gray-100 rounded-md p-2">
+                                            <div className="flex items-center gap-1.5 mb-1.5">
+                                              <div className="h-1.5 w-1.5 rounded-full bg-gray-400"></div>
+                                              <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">{group}</div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1">
+                                              {groupTags.map(({ tag, count }) => (
+                                                <button
+                                                  key={tag.keyword}
+                                                  onClick={() => toggleTagFilter(tag.keyword)}
+                                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                                                    selectedTags.has(tag.keyword)
+                                                      ? `${tag.color} shadow-sm`
+                                                      : 'bg-white text-gray-700'
+                                                  }`}
+                                                >
+                                                  {selectedTags.has(tag.keyword) && (
+                                                    <CheckCircle2 size={12} className="flex-shrink-0" />
+                                                  )}
+                                                  <span className="font-medium">{tag.label}</span>
+                                                  <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-medium ${
+                                                    selectedTags.has(tag.keyword) 
+                                                      ? 'bg-white/80 text-gray-700' 
+                                                      : 'bg-gray-100 text-gray-500'
+                                                  }`}>
+                                                    {count}
+                                                  </span>
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            )}
+
+                              {/* 除外系 */}
+                              <div className="space-y-4">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-red-400"></div>
+                                  <div className="text-xs font-bold text-gray-600">除外</div>
+                                </div>
+
+                                {/* 除外キーワード */}
+                                <div className="space-y-2">
+                                  <div className="relative">
+                                    <Tag size={16} className="absolute left-3 top-2.5 text-gray-400" />
+                                    <input
+                                      type="text"
+                                      value={newExcludeKeyword}
+                                      onChange={(e) => setNewExcludeKeyword(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && newExcludeKeyword.trim()) {
+                                          e.preventDefault();
+                                          setFilterOptions(prev => ({
+                                            ...prev,
+                                            excludeKeywords: [...prev.excludeKeywords, newExcludeKeyword.trim()]
+                                          }));
+                                          setNewExcludeKeyword('');
+                                        }
+                                      }}
+                                      placeholder="除外キーワード"
+                                      className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-md"
+                                    />
+                                    {newExcludeKeyword && (
+                                      <button
+                                        onClick={() => {
+                                          if (newExcludeKeyword.trim()) {
+                                            setFilterOptions(prev => ({
+                                              ...prev,
+                                              excludeKeywords: [...prev.excludeKeywords, newExcludeKeyword.trim()]
+                                            }));
+                                            setNewExcludeKeyword('');
+                                          }
+                                        }}
+                                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                                      >
+                                        <CheckCircle2 size={16} />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {filterOptions.excludeKeywords.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {filterOptions.excludeKeywords.map((keyword, index) => (
+                                        <span
+                                          key={index}
+                                          className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs"
+                                        >
+                                          {keyword}
+                                          <button
+                                            onClick={() => setFilterOptions(prev => ({
+                                              ...prev,
+                                              excludeKeywords: prev.excludeKeywords.filter((_, i) => i !== index)
+                                            }))}
+                                            className="text-red-500 hover:text-red-700"
+                                          >
+                                            ×
+                                          </button>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 除外ボタン */}
+                                <div className="flex flex-wrap gap-1">
+                                  <Tooltip text="「入札1」を除外">
+                                    <button
+                                      onClick={() => setFilterOptions(prev => ({ ...prev, excludeMultipleBids: !prev.excludeMultipleBids }))}
+                                      className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                                        filterOptions.excludeMultipleBids
+                                          ? 'bg-red-50 text-red-700 border-red-500'
+                                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      入札1
+                                    </button>
+                                  </Tooltip>
+                                  <Tooltip text="「ジャンク」「現状品」を除外">
+                                    <button
+                                      onClick={() => setFilterOptions(prev => ({ ...prev, excludeJunk: !prev.excludeJunk }))}
+                                      className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                                        filterOptions.excludeJunk
+                                          ? 'bg-red-50 text-red-700 border-red-500'
+                                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      ジャンク
+                                    </button>
+                                  </Tooltip>
+                                  <Tooltip text="「まとめ」「セット」を除外">
+                                    <button
+                                      onClick={() => setFilterOptions(prev => ({ ...prev, excludeSets: !prev.excludeSets }))}
+                                      className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                                        filterOptions.excludeSets
+                                          ? 'bg-red-50 text-red-700 border-red-500'
+                                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      セット
+                                    </button>
+                                  </Tooltip>
+                                  <Tooltip text="「新品」「未使用」「未開封」を除外">
+                                    <button
+                                      onClick={() => setFilterOptions(prev => ({ ...prev, excludeNew: !prev.excludeNew }))}
+                                      className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                                        filterOptions.excludeNew
+                                          ? 'bg-red-50 text-red-700 border-red-500'
+                                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      新品
+                                    </button>
+                                  </Tooltip>
+                                </div>
+                              </div>
+
+                              {/* クリアボタン */}
+                              <button
+                                onClick={resetAllFilters}
+                                className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5"
+                              >
+                                <X size={14} />
+                                全ての絞り込みをクリア
+                              </button>
                           </div>
                         )}
                       </div>
@@ -1136,7 +1374,7 @@ function App() {
                                     tick={{fontSize: 10}}
                                   />
                                   <YAxis />
-                                  <Tooltip />
+                                  <RechartsTooltip />
                                   <Bar dataKey="count" fill="#3b82f6" />
                                 </BarChart>
                               </ResponsiveContainer>
@@ -1176,10 +1414,20 @@ function App() {
                                     (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
                                   }}
                                 />
-                                <div className="absolute bottom-0 left-0 px-2 py-1 m-2 rounded bg-black/60">
-                                  <div className="flex items-center gap-1.5">
+                                <div className="absolute top-0 left-0 p-2 flex flex-wrap gap-1 max-w-[calc(100%-48px)]">
+                                  {getProductTags(item.商品名).map((tag, index) => (
+                                    <span
+                                      key={index}
+                                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${tag.color} shadow-sm backdrop-blur-[2px]`}
+                                    >
+                                      {tag.label}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="absolute bottom-0 left-0 px-2 py-1 m-2 rounded bg-black/60 backdrop-blur-[2px]">
+                                  <div className="flex items-center gap-2">
                                     <div className="text-white text-lg font-bold drop-shadow">¥{item.落札金額.toLocaleString()}</div>
-                                    <div className="text-white/90 text-[10px]">{item.入札数}件</div>
+                                    <div className="text-white text-xs font-medium">{item.入札数}件</div>
                                   </div>
                                 </div>
                               </div>
@@ -1193,16 +1441,6 @@ function App() {
                                       <Calendar size={12} />
                                       <span>{item.終了日}</span>
                                     </div>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {getProductTags(item.商品名).map((tag, index) => (
-                                      <span
-                                        key={index}
-                                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${tag.color}`}
-                                      >
-                                        {tag.label}
-                                      </span>
-                                    ))}
                                   </div>
                                 </div>
                               </div>
