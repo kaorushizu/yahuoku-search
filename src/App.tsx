@@ -1447,7 +1447,7 @@ function App() {
                         }`}
                       >
                         {selectedItems.has(item.オークションID) ? (
-                          <CheckCircle2 size={20} />
+                        <CheckCircle2 size={20} />
                         ) : (
                           <Circle size={20} />
                         )}

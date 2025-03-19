@@ -1,46 +1,58 @@
 export interface AuctionItem {
   オークションID: string;
   商品名: string;
-  現在価格: number;
-  即決価格: number;
+  落札金額: number;
+  画像URL: string;
   入札数: number;
-  残り時間: string;
-  商品画像URL: string;
-  商品URL: string;
-  タグ: string[];
+  終了日: string;
+}
+
+export interface ApiResponse {
+  page: number;
+  page_total: number;
+  items: AuctionItem[];
+  total_count?: number;
 }
 
 export interface SearchParams {
   keyword: string;
-  minPrice: number;
-  maxPrice: number;
-  sortBy: 'price-asc' | 'price-desc' | 'end-date-asc' | 'end-date-desc';
-  tags: string[];
+  page: number;
+  negative_keyword: string;
+  status: string;
+  seller: string;
+  min: string;
+  max: string;
 }
 
-export interface LayoutType {
-  type: 'grid' | 'table';
-}
-
-export interface FilteredResultsProps {
-  results: AuctionItem[];
-  selectedItems: Set<string>;
-  onItemSelect: (id: string) => void;
-  onShiftSelect: (startIndex: number, endIndex: number) => void;
-  layout: LayoutType['type'];
-}
-
-export interface SearchFormProps {
-  onSearch: (params: SearchParams) => void;
-  isLoading: boolean;
-  tags: string[];
-  onTagSelect: (tag: string) => void;
+export interface FilterOptions {
   selectedTags: string[];
+  excludeMultipleBids: boolean;
+  excludeJunk: boolean;
+  excludeKeywords: string[];
+  excludeSets: boolean;
+  excludeNew: boolean;
+  filterKeywords: string[];
 }
 
-// 各型定義ファイルからエクスポート
-export * from './product';
-export * from './search';
-export * from './filter';
-export * from './statistics';
-export * from './ui'; 
+export interface Statistics {
+  median: number;
+  average: number;
+  max: number;
+  min: number;
+  priceRanges: { range: string; count: number }[];
+}
+
+export interface ProductTag {
+  keyword: string;
+  label: string;
+  color: string;
+  group: '状態' | 'ジャンク' | 'まとめ' | '送料';
+}
+
+export interface TagCount {
+  tag: ProductTag;
+  count: number;
+}
+
+export type SortOrder = 'none' | 'asc' | 'desc';
+export type LayoutType = 'grid' | 'table'; 
