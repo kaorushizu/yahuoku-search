@@ -31,7 +31,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   availableTags
 }) => {
   return (
-    <div className="bg-white rounded-lg shadow p-4 sticky top-4">
+    <div className="bg-white rounded-lg shadow p-4 sticky top-4 overflow-y-auto scrollbar-auto-hide">
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-gray-700 flex items-center gap-1">
