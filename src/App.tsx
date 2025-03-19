@@ -142,7 +142,7 @@ function App() {
   const observerTarget = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const [isTagsVisible, setIsTagsVisible] = useState(false);
+  const [isTagsVisible, setIsTagsVisible] = useState(true);
   const [isStatsVisible, setIsStatsVisible] = useState(true);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const mainStatsRef = useRef<HTMLDivElement>(null);
