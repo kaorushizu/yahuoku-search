@@ -1,41 +1,20 @@
 import { useState, useCallback } from 'react';
-import { SearchParams, AuctionItem, ApiResponse } from '../types';
+import { AuctionItem, ApiResponse, SearchParams, FilterOptions } from '../types';
 
-interface UseAuctionSearchReturn {
-  searchParams: SearchParams;
-  setSearchParams: React.Dispatch<React.SetStateAction<SearchParams>>;
-  updateSearchParams: (params: Partial<SearchParams>) => void;
-  currentSearchKeyword: string;
-  setCurrentSearchKeyword: (keyword: string) => void;
-  searchHistory: string[];
-  setSearchHistory: React.Dispatch<React.SetStateAction<string[]>>;
-  results: AuctionItem[];
-  setResults: React.Dispatch<React.SetStateAction<AuctionItem[]>>;
-  isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
-  isLoadingMore: boolean;
-  setIsLoadingMore: (loading: boolean) => void;
-  totalPages: number;
-  setTotalPages: (pages: number) => void;
-  totalCount: number;
-  setTotalCount: (count: number) => void;
-  error: string | null;
-  setError: (error: string | null) => void;
-  handleSearch: (e: React.FormEvent, newPage?: number) => Promise<void>;
-  loadMore: () => Promise<void>;
-  isCompanyOnly: boolean;
-  setIsCompanyOnly: (isCompany: boolean) => void;
-}
-
-export const useAuctionSearch = (): UseAuctionSearchReturn => {
+/**
+ * オークション検索機能を提供するカスタムフック
+ * 検索やページネーションなど、APIとのやり取りに関するロジックを管理
+ */
+export const useAuctionSearch = () => {
+  // State declarations
   const [searchParams, setSearchParams] = useState<SearchParams>({
     keyword: '',
     page: 1,
-    negative_keyword: '',
+    excludeKeywords: [],
     status: '',
-    seller: '',
-    min: '',
-    max: '',
+    sellerId: '',
+    minPrice: '',
+    maxPrice: '',
   });
   const [currentSearchKeyword, setCurrentSearchKeyword] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -47,21 +26,81 @@ export const useAuctionSearch = (): UseAuctionSearchReturn => {
   const [error, setError] = useState<string | null>(null);
   const [isCompanyOnly, setIsCompanyOnly] = useState(false);
 
-  const buildSearchUrl = (params: SearchParams) => {
-    const urlParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) {
-        urlParams.append(key, value.toString());
-      }
-    });
-    return `https://revathis-api.vercel.app/api/aucfree?${urlParams.toString()}`;
+  /**
+   * オークション商品のURLを生成する関数
+   * @param auctionId - オークションID
+   * @param endDate - 落札日（文字列形式）
+   * @returns オークション商品のURL
+   */
+  const getAuctionUrl = (auctionId: string, endDate: string) => {
+    // 落札日をDate型に変換
+    const endDateTime = new Date(endDate);
+    // 現在の日付
+    const now = new Date();
+    // 日付の差分を計算（ミリ秒単位）
+    const diffTime = Math.abs(now.getTime() - endDateTime.getTime());
+    // 日数に変換
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 180日以内の場合はヤフオクのページへ、それより古い場合はAucFreeへ
+    if (diffDays <= 180) {
+      return `https://page.auctions.yahoo.co.jp/jp/auction/${auctionId}`;
+    } else {
+      return `https://aucfree.com/items/${auctionId}`;
+    }
   };
 
-  const updateSearchParams = useCallback((params: Partial<SearchParams>) => {
-    setSearchParams(prev => ({ ...prev, ...params }));
-  }, []);
+  /**
+   * 検索URLを構築する関数
+   * @param params - 検索パラメータ
+   * @param options - フィルタリングオプション
+   * @returns 検索用のURL
+   */
+  const buildSearchUrl = (params: SearchParams, options: FilterOptions): string => {
+    const { keyword, page, excludeKeywords, status, sellerId, minPrice, maxPrice } = params;
+    const { excludeMultipleBids, excludeJunk, excludeSets, excludeNew, excludeFreeShipping } = options;
+    
+    let searchKeyword = keyword;
+    const excludeTerms = [...excludeKeywords];
 
-  const handleSearch = useCallback(async (e: React.FormEvent, newPage?: number) => {
+    if (excludeMultipleBids) {
+      excludeTerms.push('入札1');
+    }
+
+    if (excludeJunk) {
+      excludeTerms.push('ジャンク', '現状品');
+    }
+
+    if (excludeSets) {
+      excludeTerms.push('まとめ', 'セット');
+    }
+
+    if (excludeNew) {
+      excludeTerms.push('新品', '未使用', '未開封');
+    }
+
+    if (excludeFreeShipping) {
+      excludeTerms.push('送料無料', '送料込み');
+    }
+
+    return `https://revathis-api.vercel.app/api/aucfree?keyword=${encodeURIComponent(searchKeyword)}&page=${page}&negative_keyword=${encodeURIComponent(excludeTerms.join(','))}&status=${encodeURIComponent(status)}&seller=${encodeURIComponent(sellerId)}&min=${encodeURIComponent(minPrice)}&max=${encodeURIComponent(maxPrice)}`;
+  };
+
+  /**
+   * 検索を実行する関数
+   * @param e - フォームイベント
+   * @param filterOptions - フィルタリングオプション
+   * @param newPage - 新しいページ番号（オプション）
+   * @param resetFilters - フィルターをリセットする関数
+   * @param resetSelectedItems - 選択アイテムをリセットする関数
+   */
+  const handleSearch = async (
+    e: React.FormEvent,
+    filterOptions: FilterOptions,
+    newPage?: number,
+    resetFilters?: () => void,
+    resetSelectedItems?: () => void
+  ) => {
     e?.preventDefault();
     if (!searchParams.keyword.trim()) return;
 
@@ -70,20 +109,23 @@ export const useAuctionSearch = (): UseAuctionSearchReturn => {
     setIsLoading(true);
     setError(null);
 
+    // 新しい検索時に全ての絞り込みをリセット
     if (isNewSearch) {
+      resetFilters?.();
       setResults([]);
       setCurrentSearchKeyword(searchParams.keyword);
+      resetSelectedItems?.();
     }
 
     const updatedParams = {
       ...searchParams,
       page: isNewSearch ? 1 : (newPage || 1),
-      seller: isCompanyOnly ? 'myniw58319' : searchParams.seller,
+      sellerId: isCompanyOnly ? 'myniw58319' : searchParams.sellerId,
     };
     setSearchParams(updatedParams);
 
     try {
-      const response = await fetch(buildSearchUrl(updatedParams));
+      const response = await fetch(buildSearchUrl(updatedParams, filterOptions));
       if (!response.ok) throw new Error('検索中にエラーが発生しました');
       
       const data: ApiResponse = await response.json();
@@ -108,10 +150,16 @@ export const useAuctionSearch = (): UseAuctionSearchReturn => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [searchParams, searchHistory, isCompanyOnly]);
+  };
 
-  const loadMore = useCallback(async () => {
-    if (isLoading || isLoadingMore || searchParams.page >= totalPages) return;
+  /**
+   * 次のページのデータを読み込む関数
+   * 無限スクロール機能で使用
+   * @param filterOptions - フィルタリングオプション
+   * @param showSelectedOnly - 選択アイテムのみ表示するかどうか
+   */
+  const loadMore = useCallback(async (filterOptions: FilterOptions, showSelectedOnly: boolean) => {
+    if (isLoading || isLoadingMore || searchParams.page >= totalPages || showSelectedOnly) return;
     
     setIsLoadingMore(true);
     const nextPage = searchParams.page + 1;
@@ -120,10 +168,10 @@ export const useAuctionSearch = (): UseAuctionSearchReturn => {
       const updatedParams = {
         ...searchParams,
         page: nextPage,
-        seller: isCompanyOnly ? 'myniw58319' : searchParams.seller,
+        sellerId: isCompanyOnly ? 'myniw58319' : searchParams.sellerId,
       };
       
-      const response = await fetch(buildSearchUrl(updatedParams));
+      const response = await fetch(buildSearchUrl(updatedParams, filterOptions));
       if (!response.ok) throw new Error('検索中にエラーが発生しました');
       
       const data: ApiResponse = await response.json();
@@ -138,31 +186,38 @@ export const useAuctionSearch = (): UseAuctionSearchReturn => {
     }
   }, [searchParams, totalPages, isLoading, isLoadingMore, isCompanyOnly]);
 
+  /**
+   * 全ての検索条件をリセットする関数
+   */
+  const resetSearch = () => {
+    setSearchParams({
+      keyword: '',
+      page: 1,
+      excludeKeywords: [],
+      status: '',
+      sellerId: '',
+      minPrice: '',
+      maxPrice: '',
+    });
+    setIsCompanyOnly(false);
+  };
+
   return {
     searchParams,
     setSearchParams,
-    updateSearchParams,
     currentSearchKeyword,
-    setCurrentSearchKeyword,
     searchHistory,
-    setSearchHistory,
     results,
-    setResults,
     isLoading,
-    setIsLoading,
     isLoadingMore,
-    setIsLoadingMore,
     totalPages,
-    setTotalPages,
     totalCount,
-    setTotalCount,
     error,
-    setError,
+    isCompanyOnly,
+    setIsCompanyOnly,
+    getAuctionUrl,
     handleSearch,
     loadMore,
-    isCompanyOnly,
-    setIsCompanyOnly
+    resetSearch
   };
-};
-
-export default useAuctionSearch; 
+}; 

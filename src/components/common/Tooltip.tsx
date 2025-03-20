@@ -1,10 +1,13 @@
 import React from 'react';
+import { TooltipProps } from '../../types';
 
-interface TooltipProps {
-  text: string;
-  children: React.ReactNode;
-}
-
+/**
+ * ツールチップを表示するコンポーネント
+ * 要素にホバーした際に、指定されたテキストを表示する
+ * 
+ * @param text - 表示するツールチップのテキスト
+ * @param children - ツールチップを表示する対象の要素
+ */
 const Tooltip: React.FC<TooltipProps> = ({ text, children }) => {
   return (
     <div className="group relative inline-block">
