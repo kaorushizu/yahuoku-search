@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Search, Tag, Calculator, CheckCircle2, ArrowUpDown } from 'lucide-react';
+import { X, Search, Tag, Calculator, CheckCircle2, ArrowUpDown, Keyboard, Layout, MousePointer } from 'lucide-react';
 
 interface HelpPageProps {
   onClose: () => void;
@@ -44,6 +44,22 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                 </div>
               </section>
 
+              {/* キーボードショートカット */}
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Keyboard size={20} />
+                  キーボードショートカット
+                </h3>
+                <div className="space-y-2 text-gray-600">
+                  <p>以下のショートカットキーを使用して操作を効率化できます：</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li><span className="font-semibold">Ctrl+S</span>（またはMacの場合は<span className="font-semibold">Command+S</span>）: 検索ボックスにフォーカスを移動</li>
+                    <li>フォーカス移動時に自動的に検索ボックス内のテキストが全選択されます</li>
+                    <li>日本語入力中はEnterキーの処理が最適化され、変換確定後に誤って検索が実行されることを防止します</li>
+                  </ul>
+                </div>
+              </section>
+
               {/* 絞り込み機能 */}
               <section>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -53,10 +69,43 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                 <div className="space-y-2 text-gray-600">
                   <p>検索結果は以下の方法で絞り込むことができます：</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>複数入札のみ表示: 入札が2件以上ある商品のみを表示</li>
-                    <li>ジャンクを除外: ジャンク品を検索結果から除外</li>
-                    <li>キーワード絞り込み: 検索結果をさらにキーワードで絞り込み</li>
-                    <li>商品タグ: 商品の状態や特徴（新品、未使用、送料無料など）でフィルタリング</li>
+                    <li><span className="font-semibold">含むキーワード</span>: 指定したキーワードを含む商品のみを表示</li>
+                    <li><span className="font-semibold">除外キーワード</span>: 指定したキーワードを含む商品を除外</li>
+                    <li><span className="font-semibold">タグ絞り込み</span>: 商品の状態や特徴（新品、未使用、送料無料など）でフィルタリング</li>
+                    <li><span className="font-semibold">除外オプション</span>: 入札1件のみ、ジャンク品、セット商品、新品商品などを除外</li>
+                  </ul>
+                </div>
+              </section>
+
+              {/* 表示方法の切り替え */}
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Layout size={20} />
+                  表示方法の切り替え
+                </h3>
+                <div className="space-y-2 text-gray-600">
+                  <p>検索結果の表示方法を切り替えることができます：</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li><span className="font-semibold">グリッド表示</span>: 画像を中心としたカード形式の表示（デフォルト）</li>
+                    <li><span className="font-semibold">テーブル表示</span>: 詳細情報を表形式で表示</li>
+                    <li>商品名のテキストは選択してコピーできるようになっています</li>
+                    <li>画像をクリックすると商品ページに移動します</li>
+                  </ul>
+                </div>
+              </section>
+
+              {/* 画像の拡大表示 */}
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <MousePointer size={20} />
+                  画像の拡大表示
+                </h3>
+                <div className="space-y-2 text-gray-600">
+                  <p>テーブル表示時に商品画像を拡大表示できます：</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>商品画像にマウスカーソルを合わせると拡大表示されます</li>
+                    <li>カーソル位置に合わせて拡大画像が表示されます</li>
+                    <li>カーソルを外すと拡大表示が消えます</li>
                   </ul>
                 </div>
               </section>
@@ -90,6 +139,7 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                   <ul className="list-disc list-inside space-y-1">
                     <li>選択した商品の統計情報が画面左上に表示されます</li>
                     <li>「選択した商品のみ表示」ボタンで選択商品だけを表示できます</li>
+                    <li>Shiftキーを押しながら別の商品を選択すると、範囲選択ができます</li>
                     <li>クリアボタンで選択をリセットできます</li>
                   </ul>
                 </div>
