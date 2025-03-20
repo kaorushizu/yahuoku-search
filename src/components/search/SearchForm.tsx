@@ -60,7 +60,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
                 }
               }}
               placeholder="すべてのアイテムから探す"
-              className="w-full pl-9 pr-10 py-1.5 bg-gray-700/50 border border-gray-700 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-600 focus:border-gray-600"
+              className="w-full pl-9 pr-10 py-2 h-10 bg-gray-700/50 border border-gray-700 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-600 focus:border-gray-600"
             />
             {/* 検索クリアボタン */}
             {searchParams.keyword && (
@@ -91,7 +91,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
           {/* 検索実行ボタン */}
           <button
             type="submit"
-            className="shrink-0 px-4 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+            className="shrink-0 px-4 py-2 h-10 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium transition-colors duration-200 flex items-center gap-1"
             disabled={isLoading}
           >
             <Search size={16} />
