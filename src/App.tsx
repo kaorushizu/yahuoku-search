@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { SlidersHorizontal, HelpCircle } from 'lucide-react';
+import { SlidersHorizontal, HelpCircle, LayoutGrid, Table } from 'lucide-react';
 import HelpPage from './components/HelpPage';
 import ScrollToTopButton from './components/common/ScrollToTopButton';
 import SearchForm from './components/search/SearchForm';
@@ -68,9 +68,20 @@ function App() {
   // UI関連の状態
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [layout, setLayout] = useState<'grid' | 'table'>('grid');
+  
+  // 価格範囲フィルターをリセットする関数（ResultsContainerで定義される）
+  const [clearPriceRangeFilters, setClearPriceRangeFilters] = useState<() => void>(() => () => {});
+  
+  // 価格範囲フィルターが有効かどうかのフラグ
+  const [hasPriceRangeFilter, setHasPriceRangeFilter] = useState(false);
   
   // レガシーコードとの互換性を保つためのラッパー関数
   const handleSearch = (e: React.FormEvent, newPage?: number) => {
+    // 新しい検索の場合（ページネーションでない場合）は価格フィルターもリセット
+    if (!newPage) {
+      clearPriceRangeFilters();
+    }
     originalHandleSearch(e, filterOptions, newPage, resetAllFilters, clearSelectedItems);
   };
   
@@ -82,10 +93,6 @@ function App() {
   const handleItemRangeSelection = useCallback((id: string) => {
     handleRangeSelection(id, results, false);
   }, [handleRangeSelection, results]);
-
-  const handleToggleSelectAll = useCallback(() => {
-    toggleSelectAll(results.filter(item => selectedTags.size === 0 || getProductTags(item.商品名).some(tag => selectedTags.has(tag.keyword))));
-  }, [toggleSelectAll, results, selectedTags, getProductTags]);
 
   const handleAddFilterKeyword = useCallback(() => {
     if (newFilterKeyword.trim()) {
@@ -110,6 +117,10 @@ function App() {
     getProductTags
   );
   
+  const handleToggleSelectAll = useCallback(() => {
+    toggleSelectAll(filteredResults);
+  }, [toggleSelectAll, filteredResults]);
+
   // 統計情報を計算するカスタムフックを使用
   const statistics = useStatistics(filteredResults);
   const selectedStatistics = useStatistics(
@@ -124,6 +135,20 @@ function App() {
   useEffect(() => {
     if (!observerTarget.current) return;
 
+    // フィルターが適用されているかチェック
+    const hasFilters = showSelectedOnly || 
+      selectedTags.size > 0 || 
+      filterOptions.filterKeywords.length > 0 || 
+      filterOptions.excludeKeywords.length > 0 || 
+      filterOptions.excludeJunk || 
+      filterOptions.excludeMultipleBids || 
+      filterOptions.excludeNew || 
+      filterOptions.excludeSets || 
+      filterOptions.excludeFreeShipping;
+    
+    // フィルターが適用されている場合は無限スクロールを実行しない
+    if (hasFilters) return;
+
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0].isIntersecting) {
@@ -135,7 +160,7 @@ function App() {
 
     observer.observe(observerTarget.current);
     return () => observer.disconnect();
-  }, [loadMore]);
+  }, [loadMore, showSelectedOnly, selectedTags, filterOptions]);
 
   // Ctrl+Sで検索ボックスにフォーカスするショートカット
   useEffect(() => {
@@ -248,33 +273,69 @@ function App() {
                     </button>
                   </div>
                 </div>
-                {/* 検索結果件数表示 */}
-                <div className="hidden md:block ml-8">
-                  <div className="text-sm text-gray-300">
-                    <span className="font-bold text-lg text-white">{totalCount.toLocaleString()}</span>
-                    <span className="mx-1">件中</span>
-                    <span className="font-bold text-lg text-white">{filteredResults.length.toLocaleString()}</span>
-                    <span className="mx-1">件表示</span>
+                
+                {/* 右側の要素をまとめて右寄せ */}
+                <div className="flex items-center gap-4 ml-auto">
+                  {/* 検索結果件数表示 */}
+                  <div className="hidden md:block">
+                    <div className="text-sm text-gray-300">
+                      <span className="font-bold text-lg text-white">{totalCount.toLocaleString()}</span>
+                      <span className="mx-1">件中</span>
+                      <span className="font-bold text-lg text-white">{filteredResults.length.toLocaleString()}</span>
+                      <span className="mx-1">件表示</span>
+                    </div>
+                  </div>
+                
+                  {/* レイアウト切り替えボタン */}
+                  {results.length > 0 && (
+                    <div className="hidden md:flex items-center border border-gray-600 rounded-md overflow-hidden">
+                      <button
+                        onClick={() => setLayout('grid')}
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors duration-200 ${
+                          layout === 'grid'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        }`}
+                        title="グリッド表示"
+                      >
+                        <LayoutGrid size={14} />
+                        <span>グリッド</span>
+                      </button>
+                      <button
+                        onClick={() => setLayout('table')}
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors duration-200 ${
+                          layout === 'table'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        }`}
+                        title="テーブル表示"
+                      >
+                        <Table size={14} />
+                        <span>テーブル</span>
+                      </button>
+                    </div>
+                  )}
+                
+                  {/* モバイル用詳細検索ボタンとヘルプボタン */}
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setIsAdvancedSearch(!isAdvancedSearch)}
+                      className="md:hidden p-2 rounded hover:bg-gray-800 transition-colors duration-200"
+                      title="詳細検索"
+                    >
+                      <SlidersHorizontal size={20} className="text-gray-400 hover:text-gray-300" />
+                    </button>
+                    <button
+                      onClick={() => setShowHelp(true)}
+                      className="hidden md:block p-2 rounded hover:bg-gray-800 transition-colors duration-200"
+                      title="ヘルプを表示"
+                    >
+                      <HelpCircle size={20} className="text-gray-400 hover:text-gray-300" />
+                    </button>
                   </div>
                 </div>
-                {/* モバイル用アクションボタン */}
-                <div className="flex items-center gap-2 ml-4">
-                  <button
-                    onClick={() => setIsAdvancedSearch(!isAdvancedSearch)}
-                    className="md:hidden p-2 rounded hover:bg-gray-800 transition-colors duration-200"
-                    title="詳細検索"
-                  >
-                    <SlidersHorizontal size={20} className="text-gray-400 hover:text-gray-300" />
-                  </button>
-                  <button
-                    onClick={() => setShowHelp(true)}
-                    className="hidden md:block p-2 rounded hover:bg-gray-800 transition-colors duration-200"
-                    title="ヘルプを表示"
-                  >
-                    <HelpCircle size={20} className="text-gray-400 hover:text-gray-300" />
-                  </button>
-                </div>
               </div>
+              
               {/* 詳細検索パネル */}
               {isAdvancedSearch && (
                 <AdvancedSearchPanel
@@ -291,51 +352,58 @@ function App() {
           {/* メインコンテンツ */}
           <main className="flex-1">
             <div className="max-w-8xl mx-auto px-4 py-6">
-              <ResultsContainer
-                results={results}
-                filteredResults={filteredResults}
-                isLoading={isLoading}
-                error={error}
-                currentSearchKeyword={currentSearchKeyword}
-                statistics={statistics!}
-                totalCount={totalCount}
-                selectedItems={selectedItems}
-                selectedTags={selectedTags}
-                setSelectedTags={setSelectedTags}
-                toggleItemSelection={toggleItemSelection}
-                handleRangeSelection={handleItemRangeSelection}
-                toggleSelectAll={handleToggleSelectAll}
-                clearSelectedItems={clearSelectedItems}
-                filterOptions={filterOptions}
-                setFilterOptions={setFilterOptions}
-                filterKeyword={filterKeyword}
-                setFilterKeyword={setFilterKeyword}
-                newFilterKeyword={newFilterKeyword}
-                setNewFilterKeyword={setNewFilterKeyword}
-                newExcludeKeyword={newExcludeKeyword}
-                setNewExcludeKeyword={setNewExcludeKeyword}
-                showTags={showTags}
-                setShowTags={setShowTags}
-                toggleTagFilter={toggleTagFilter}
-                resetAllFilters={resetAllFilters}
-                availableTags={availableTags}
-                addFilterKeyword={handleAddFilterKeyword}
-                addExcludeKeyword={handleAddExcludeKeyword}
-                getProductTags={getProductTags}
-                getAuctionUrl={getAuctionUrl}
-              />
+              {/* ResultsContainerが内部でグリッドレイアウトを持っているので、
+                  ここでは単純にResultsContainerとページネーション部分を縦に並べるだけ */}
+              <div>
+                {/* 商品一覧（ResultsContainer） */}
+                <ResultsContainer
+                  results={results}
+                  filteredResults={filteredResults}
+                  isLoading={isLoading}
+                  error={error}
+                  currentSearchKeyword={searchParams.keyword}
+                  statistics={statistics || { median: 0, average: 0, min: 0, max: 0, priceRanges: [] }}
+                  totalCount={totalCount}
+                  selectedItems={selectedItems}
+                  selectedTags={selectedTags}
+                  setSelectedTags={setSelectedTags}
+                  toggleItemSelection={toggleItemSelection}
+                  handleRangeSelection={handleItemRangeSelection}
+                  toggleSelectAll={handleToggleSelectAll}
+                  clearSelectedItems={clearSelectedItems}
+                  filterOptions={filterOptions}
+                  setFilterOptions={setFilterOptions}
+                  filterKeyword={filterKeyword}
+                  setFilterKeyword={setFilterKeyword}
+                  newFilterKeyword={newFilterKeyword}
+                  setNewFilterKeyword={setNewFilterKeyword}
+                  newExcludeKeyword={newExcludeKeyword}
+                  setNewExcludeKeyword={setNewExcludeKeyword}
+                  showTags={showTags}
+                  setShowTags={setShowTags}
+                  toggleTagFilter={toggleTagFilter}
+                  resetAllFilters={resetAllFilters}
+                  availableTags={availableTags}
+                  addFilterKeyword={handleAddFilterKeyword}
+                  addExcludeKeyword={handleAddExcludeKeyword}
+                  getProductTags={getProductTags}
+                  getAuctionUrl={getAuctionUrl}
+                  layout={layout}
+                  setLayout={setLayout}
+                  setClearPriceRangeFilters={setClearPriceRangeFilters}
+                  setHasPriceRangeFilter={setHasPriceRangeFilter}
+                  loadMore={loadMore}
+                  isLoadingMore={isLoadingMore}
+                  showSelectedOnly={showSelectedOnly}
+                  hasPriceRangeFilter={hasPriceRangeFilter}
+                  currentPage={searchParams.page}
+                  totalPages={totalPages}
+                  observerTarget={observerTarget}
+                />
 
-              {/* 無限スクロール用のローディングインジケーター */}
-              {!isLoading && searchParams.page < totalPages && !showSelectedOnly && selectedTags.size === 0 && (
-                <div ref={observerTarget} className="mt-8 mb-4">
-                  <div className="bg-white rounded-lg shadow p-4">
-                    <div className="flex items-center justify-center gap-3">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
-                      <span className="text-gray-600">次のページを読み込み中...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                {/* ページネーション部分（削除） */}
+                {/* ページネーションはResultsContainerに移動しました */}
+              </div>
             </div>
           </main>
         </div>

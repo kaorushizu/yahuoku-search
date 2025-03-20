@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ImageMagnifierProps {
   src: string;
@@ -31,10 +32,41 @@ const ImageMagnifier: React.FC<ImageMagnifierProps> = ({
   height = 'auto',
   className = '',
   fallbackSrc = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30',
-  magnifierSize = 256,
+  magnifierSize = 300,
   zoomLevel = 1.5
 }) => {
   const [showMagnifier, setShowMagnifier] = useState(false);
+  const [magnifierPosition, setMagnifierPosition] = useState({ top: 0, left: 0 });
+  const imgRef = useRef<HTMLImageElement>(null);
+  const portalContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Portalコンテナを作成して初期化
+  useEffect(() => {
+    // すでに作成済みの場合は何もしない
+    if (portalContainerRef.current) return;
+    
+    // Portalコンテナを作成
+    const div = document.createElement('div');
+    div.style.position = 'absolute';
+    div.style.top = '0';
+    div.style.left = '0';
+    div.style.width = '100%';
+    div.style.height = '0';
+    div.style.overflow = 'visible';
+    div.style.pointerEvents = 'none';
+    div.style.zIndex = '9999';
+    document.body.appendChild(div);
+    
+    portalContainerRef.current = div;
+    
+    // クリーンアップ関数
+    return () => {
+      if (portalContainerRef.current) {
+        document.body.removeChild(portalContainerRef.current);
+        portalContainerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const target = e.target as HTMLImageElement;
@@ -42,32 +74,55 @@ const ImageMagnifier: React.FC<ImageMagnifierProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
-    const tooltip = e.currentTarget.parentElement?.nextElementSibling as HTMLElement;
-    if (tooltip) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      tooltip.style.top = `${rect.top}px`;
-      tooltip.style.left = `${rect.left}px`;
-      tooltip.style.opacity = '1';
-      tooltip.style.visibility = 'visible';
+    if (!imgRef.current) return;
+    
+    // マウスの位置を取得
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    
+    // ビューポートのサイズを取得
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // 拡大画像を左に表示するなら左、右に余裕がなければ右に表示
+    let left = mouseX - magnifierSize - 20;
+    if (left < 10) {
+      // 左側に余裕がない場合は右側に表示
+      left = mouseX + 20;
     }
+    
+    // 拡大画像の上下位置をカーソルに合わせる
+    let top = mouseY - magnifierSize / 2;
+    
+    // 画面上部に収まるように調整
+    if (top < 10) {
+      top = 10;
+    }
+    
+    // 画面下部に収まるように調整
+    if (top + magnifierSize > viewportHeight - 10) {
+      top = viewportHeight - magnifierSize - 10;
+    }
+    
+    // オフセットをfixedの位置計算に考慮
+    setMagnifierPosition({
+      top: top,
+      left: left
+    });
   };
 
   const handleMouseEnter = () => {
     setShowMagnifier(true);
   };
 
-  const handleMouseLeave = (e: React.MouseEvent<HTMLImageElement>) => {
-    const tooltip = e.currentTarget.parentElement?.nextElementSibling as HTMLElement;
-    if (tooltip) {
-      tooltip.style.opacity = '0';
-      tooltip.style.visibility = 'hidden';
-    }
+  const handleMouseLeave = () => {
     setShowMagnifier(false);
   };
 
   return (
     <>
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
         className={className}
@@ -78,22 +133,28 @@ const ImageMagnifier: React.FC<ImageMagnifierProps> = ({
         onMouseLeave={handleMouseLeave}
       />
       
-      <div 
-        className="fixed opacity-0 invisible transition-all duration-200 z-50 pointer-events-none" 
-        style={{ transform: 'translateX(-100%)', marginLeft: '-20px' }}
-      >
+      {showMagnifier && portalContainerRef.current && createPortal(
         <div 
-          className="bg-white rounded-lg shadow-xl p-2"
-          style={{ width: magnifierSize, height: magnifierSize }}
+          className="fixed transition-all duration-200 z-50 pointer-events-none" 
+          style={{ 
+            top: `${magnifierPosition.top}px`,
+            left: `${magnifierPosition.left}px`
+          }}
         >
-          <img
-            src={src}
-            alt={alt}
-            className="w-full h-full object-contain"
-            onError={handleImageError}
-          />
-        </div>
-      </div>
+          <div 
+            className="bg-white rounded-lg shadow-xl p-2"
+            style={{ width: magnifierSize, height: magnifierSize }}
+          >
+            <img
+              src={src}
+              alt={alt}
+              className="w-full h-full object-contain"
+              onError={handleImageError}
+            />
+          </div>
+        </div>,
+        portalContainerRef.current
+      )}
     </>
   );
 };

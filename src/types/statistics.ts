@@ -16,4 +16,6 @@ export interface Statistics {
 export interface PriceRange {
   range: string;                // 価格帯の表示用文字列
   count: number;                // その価格帯に含まれる商品数
+  rangeStart?: number;          // 価格範囲の開始値
+  rangeEnd?: number;            // 価格範囲の終了値
 } 

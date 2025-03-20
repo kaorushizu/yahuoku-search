@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ExternalLink, CheckCircle2, Circle, Package2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import ImageMagnifier from '../common/ImageMagnifier';
 import { AuctionItem, ProductTag, SortOrder } from '../../types';
@@ -14,6 +14,7 @@ interface ResultsListProps {
   getProductTags: (title: string) => ProductTag[];
   getAuctionUrl: (id: string, endDate: string) => string;
   setLayout: React.Dispatch<React.SetStateAction<'grid' | 'table'>>;
+  toggleSelectAll: () => void;
 }
 
 /**
@@ -30,8 +31,25 @@ const ResultsList: React.FC<ResultsListProps> = ({
   handleRangeSelection,
   getProductTags,
   getAuctionUrl,
-  setLayout
+  setLayout,
+  toggleSelectAll
 }) => {
+  const [tooltipContent, setTooltipContent] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+  const handleMouseEnter = (content: string, e: React.MouseEvent) => {
+    setTooltipContent(content);
+    setTooltipPosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setTooltipPosition({ x: e.clientX, y: e.clientY + 25 });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltipContent(null);
+  };
+
   return (
     <div className="space-y-4">
       {/* ヘッダー情報 */}
@@ -46,30 +64,6 @@ const ResultsList: React.FC<ResultsListProps> = ({
             <span>{filteredResults.length.toLocaleString()}件</span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            {/* レイアウト切り替えボタン */}
-            <div className="flex items-center gap-1 bg-gray-100 rounded-md p-0.5">
-              <button
-                onClick={() => setLayout('grid')}
-                className={`px-2 py-1 rounded text-xs font-medium transition-colors duration-200 ${
-                  layout === 'grid'
-                    ? 'bg-white text-gray-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                グリッド
-              </button>
-              <button
-                onClick={() => setLayout('table')}
-                className={`px-2 py-1 rounded text-xs font-medium transition-colors duration-200 ${
-                  layout === 'table'
-                    ? 'bg-white text-gray-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                テーブル
-              </button>
-            </div>
-            
             {/* 価格ソートボタン */}
             <button
               onClick={() => {
@@ -95,7 +89,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
       {/* 検索結果グリッド/テーブル表示 */}
       {layout === 'grid' ? (
         // グリッドレイアウト表示
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {filteredResults.map((item) => (
             <div
               key={item.オークションID}
@@ -161,7 +155,12 @@ const ResultsList: React.FC<ResultsListProps> = ({
               {/* 商品名と終了日 (リンクなし) */}
               <div className="p-2">
                 <div className="space-y-1">
-                  <h3 className="text-xs font-medium text-gray-800 line-clamp-2 group-hover:line-clamp-none transition-all duration-200">
+                  <h3 
+                    className="text-xs font-medium text-gray-800 line-clamp-2 cursor-help"
+                    onMouseEnter={(e) => handleMouseEnter(item.商品名, e)}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                  >
                     {item.商品名}
                   </h3>
                   <div className="flex items-center text-xs text-gray-500">
@@ -181,8 +180,13 @@ const ResultsList: React.FC<ResultsListProps> = ({
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-8">
-                    {/* テーブルヘッダー、全選択ボタンは親コンポーネントで制御 */}
+                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-14">
+                    <input 
+                      type="checkbox"
+                      className="w-5 h-5 rounded text-blue-500 focus:ring-blue-400"
+                      checked={filteredResults.length > 0 && filteredResults.every(item => selectedItems.has(item.オークションID))}
+                      onChange={toggleSelectAll}
+                    />
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">商品名</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 whitespace-nowrap">現在価格</th>
@@ -194,27 +198,25 @@ const ResultsList: React.FC<ResultsListProps> = ({
               <tbody className="divide-y divide-gray-200">
                 {filteredResults.map((item) => (
                   <tr key={item.オークションID} className="group hover:bg-gray-50">
-                    <td className="px-2 py-3">
-                      <button
+                    <td className="px-2 py-3 text-center">
+                      <input 
+                        type="checkbox"
+                        className={`w-5 h-5 rounded text-blue-500 focus:ring-blue-400 ${
+                          !selectedItems.has(item.オークションID) 
+                            ? 'opacity-0 group-hover:opacity-100 transition-opacity duration-200' 
+                            : ''
+                        }`}
+                        checked={selectedItems.has(item.オークションID)}
+                        onChange={(e) => {
+                          toggleItemSelection(item.オークションID);
+                        }}
                         onClick={(e) => {
                           if (e.shiftKey) {
+                            e.preventDefault();
                             handleRangeSelection(item.オークションID);
-                          } else {
-                            toggleItemSelection(item.オークションID);
                           }
                         }}
-                        className={`p-1 rounded-full transition-opacity duration-200 ${
-                          selectedItems.has(item.オークションID)
-                            ? 'bg-blue-500 text-white opacity-100'
-                            : 'bg-white text-gray-400 border opacity-0 group-hover:opacity-100'
-                        }`}
-                      >
-                        {selectedItems.has(item.オークションID) ? (
-                          <CheckCircle2 size={16} />
-                        ) : (
-                          <Circle size={16} />
-                        )}
-                      </button>
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-3">
@@ -224,21 +226,15 @@ const ResultsList: React.FC<ResultsListProps> = ({
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            <img
-                              src={item.画像URL}
+                            <ImageMagnifier 
+                              src={item.画像URL} 
                               alt={item.商品名}
-                              className="w-16 h-16 object-cover bg-white rounded border cursor-pointer hover:ring-2 hover:ring-blue-500"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
-                              }}
+                              width="94px"
+                              height="94px"
+                              className="w-[94px] h-[94px] object-cover bg-white rounded border cursor-pointer hover:ring-2 hover:ring-blue-500"
+                              fallbackSrc="https://images.unsplash.com/photo-1523275335684-37898b6baf30"
                             />
                           </a>
-                          <ImageMagnifier 
-                            src={item.画像URL} 
-                            alt={item.商品名}
-                            width="64px"
-                            height="64px"
-                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-gray-900 line-clamp-2">
@@ -284,6 +280,22 @@ const ResultsList: React.FC<ResultsListProps> = ({
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* カスタムツールチップ */}
+      {tooltipContent && (
+        <div 
+          className="fixed bg-gray-800 text-white text-xs rounded px-3 py-2 max-w-sm z-50 pointer-events-none shadow-lg"
+          style={{ 
+            left: `${tooltipPosition.x}px`, 
+            top: `${tooltipPosition.y}px`,
+            transform: 'translateX(-50%)',
+            opacity: 0.95,
+            transition: 'opacity 0.15s ease-in-out'
+          }}
+        >
+          {tooltipContent}
         </div>
       )}
     </div>

@@ -159,7 +159,18 @@ export const useAuctionSearch = () => {
    * @param showSelectedOnly - 選択アイテムのみ表示するかどうか
    */
   const loadMore = useCallback(async (filterOptions: FilterOptions, showSelectedOnly: boolean) => {
-    if (isLoading || isLoadingMore || searchParams.page >= totalPages || showSelectedOnly) return;
+    if (isLoading || isLoadingMore || searchParams.page >= totalPages) return;
+    
+    // 選択アイテムのみ表示、または何らかのフィルターが適用されている場合は
+    // 無限スクロールによる自動ロードは行わない（ボタンクリックでのみロード）
+    const hasFilters = showSelectedOnly || 
+      filterOptions.filterKeywords.length > 0 || 
+      filterOptions.excludeKeywords.length > 0 || 
+      filterOptions.excludeJunk || 
+      filterOptions.excludeMultipleBids || 
+      filterOptions.excludeNew || 
+      filterOptions.excludeSets || 
+      filterOptions.excludeFreeShipping;
     
     setIsLoadingMore(true);
     const nextPage = searchParams.page + 1;
