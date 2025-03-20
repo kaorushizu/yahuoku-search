@@ -73,7 +73,9 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                     <li><span className="font-semibold">除外キーワード</span>: 指定したキーワードを含む商品を除外</li>
                     <li><span className="font-semibold">タグ絞り込み</span>: 商品の状態や特徴（新品、未使用、送料無料など）でフィルタリング</li>
                     <li><span className="font-semibold">除外オプション</span>: 入札1件のみ、ジャンク品、セット商品、新品商品などを除外</li>
+                    <li><span className="font-semibold">価格範囲フィルター</span>: 統計グラフの棒をクリックして特定の価格帯の商品だけを表示</li>
                   </ul>
+                  <p>複数のフィルターを組み合わせて使用することもできます。適用中のフィルターは画面上部に表示され、個別に削除できます。</p>
                 </div>
               </section>
 
@@ -90,22 +92,25 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                     <li><span className="font-semibold">テーブル表示</span>: 詳細情報を表形式で表示</li>
                     <li>商品名のテキストは選択してコピーできるようになっています</li>
                     <li>画像をクリックすると商品ページに移動します</li>
+                    <li>テーブル表示では、行にカーソルを合わせると選択用チェックボックスが表示されます</li>
+                    <li>テーブルのヘッダーにあるチェックボックスで全選択/全解除ができます</li>
                   </ul>
                 </div>
               </section>
 
-              {/* 画像の拡大表示 */}
+              {/* 画像と商品名の表示 */}
               <section>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <MousePointer size={20} />
-                  画像の拡大表示
+                  画像と商品名の表示
                 </h3>
                 <div className="space-y-2 text-gray-600">
-                  <p>テーブル表示時に商品画像を拡大表示できます：</p>
+                  <p>商品の詳細情報を効率的に確認できる機能：</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>商品画像にマウスカーソルを合わせると拡大表示されます</li>
-                    <li>カーソル位置に合わせて拡大画像が表示されます</li>
-                    <li>カーソルを外すと拡大表示が消えます</li>
+                    <li><span className="font-semibold">画像の拡大表示</span>: テーブル表示時に商品画像にマウスを合わせると拡大表示されます</li>
+                    <li><span className="font-semibold">商品名ツールチップ</span>: グリッドビューで商品名にマウスを合わせると全文がポップアップ表示されます</li>
+                    <li>テーブルビューでは商品名がより広いスペースで表示されるため、ツールチップは表示されません</li>
+                    <li>どちらの表示方法でも商品画像をクリックするとヤフオクの商品ページを開けます</li>
                   </ul>
                 </div>
               </section>
@@ -125,6 +130,8 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                     <li>最安値: 最も安い落札価格</li>
                   </ul>
                   <p className="mt-2">グラフ表示では価格帯ごとの商品数分布を確認できます。</p>
+                  <p>グラフの棒をクリックすると、その価格帯の商品だけを表示するフィルターが適用されます。複数の価格帯を選択することも可能です。</p>
+                  <p>フィルターが適用されると、選択されている価格帯の棒グラフは青色で表示されます。「選択した価格範囲をクリア」ボタンですべての価格フィルターを解除できます。</p>
                 </div>
               </section>
 
@@ -135,8 +142,10 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                   商品の選択と比較
                 </h3>
                 <div className="space-y-2 text-gray-600">
-                  <p>商品カードの右上のチェックマークをクリックして商品を選択できます：</p>
+                  <p>商品を選択して比較することができます：</p>
                   <ul className="list-disc list-inside space-y-1">
+                    <li><span className="font-semibold">グリッド表示</span>: 商品カードの右上のチェックマークをクリックして選択</li>
+                    <li><span className="font-semibold">テーブル表示</span>: 行のチェックボックスをクリックして選択、テーブルヘッダーのチェックボックスで全選択</li>
                     <li>選択した商品の統計情報が画面左上に表示されます</li>
                     <li>「選択した商品のみ表示」ボタンで選択商品だけを表示できます</li>
                     <li>Shiftキーを押しながら別の商品を選択すると、範囲選択ができます</li>
@@ -154,10 +163,11 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                 <div className="space-y-2 text-gray-600">
                   <p>検索結果は価格順に並び替えることができます：</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>価格の安い順</li>
-                    <li>価格の高い順</li>
+                    <li>価格の安い順（低 → 高）</li>
+                    <li>価格の高い順（高 → 低）</li>
                   </ul>
-                  <p>並び替えボタンをクリックするたびに順序が切り替わります。</p>
+                  <p>価格順ボタンをクリックするたびに「未ソート」→「安い順」→「高い順」→「未ソート」の順で切り替わります。</p>
+                  <p>ソート状態はボタンの色とアイコンで確認できます。</p>
                 </div>
               </section>
             </div>
