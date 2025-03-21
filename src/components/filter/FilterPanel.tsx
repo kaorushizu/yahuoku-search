@@ -153,7 +153,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                   value={newFilterKeyword}
                   onChange={(e) => setNewFilterKeyword(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newFilterKeyword.trim()) {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing && newFilterKeyword.trim()) {
                       handleAddFilterKeyword();
                     }
                   }}
@@ -260,7 +260,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                   value={newExcludeKeyword}
                   onChange={(e) => setNewExcludeKeyword(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newExcludeKeyword.trim()) {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing && newExcludeKeyword.trim()) {
                       e.preventDefault();
                       handleAddExcludeKeyword();
                     }

@@ -283,6 +283,7 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
               onPriceRangeClick={handlePriceRangeClick}
               selectedPriceRanges={selectedPriceRanges}
               hasActiveFilters={hasAnyFilter()}
+              hasActivePriceFilters={selectedPriceRanges.length > 0}
               onClearAllPriceRanges={clearAllPriceRangeFilters}
             />
           )}
@@ -340,6 +341,7 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
                 onPriceRangeClick={handlePriceRangeClick}
                 selectedPriceRanges={selectedPriceRanges}
                 hasActiveFilters={hasAnyFilter()}
+                hasActivePriceFilters={selectedPriceRanges.length > 0}
                 onClearAllPriceRanges={clearAllPriceRangeFilters}
               />
             )}

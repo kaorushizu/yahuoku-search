@@ -19,6 +19,7 @@ interface StatisticsPanelProps {
   onPriceRangeClick?: (rangeStart: number, rangeEnd: number, rangeText: string) => void;
   selectedPriceRanges?: PriceRange[];
   hasActiveFilters?: boolean;
+  hasActivePriceFilters?: boolean;
   maxWidth?: string;
   onClearAllPriceRanges?: () => void;
 }
@@ -52,6 +53,7 @@ const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
   onPriceRangeClick,
   selectedPriceRanges = [],
   hasActiveFilters = false,
+  hasActivePriceFilters = false,
   maxWidth,
   onClearAllPriceRanges
 }) => {
@@ -76,8 +78,8 @@ const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
 
   // 価格範囲が選択されているか確認する関数
   const isPriceRangeSelected = (rangeStart: number, rangeEnd: number) => {
-    // フィルターが適用されていない場合は全て青く表示（選択状態）
-    if (!hasActiveFilters) {
+    // 価格帯フィルターが適用されていない場合は、全て青く表示（選択状態）
+    if (!hasActivePriceFilters) {
       return true;
     }
     
@@ -89,7 +91,7 @@ const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
       );
     }
     
-    // 価格範囲フィルターがないが、他のフィルターがある場合は全て選択解除状態（グレー）
+    // 価格範囲フィルターがあるが、指定された範囲が選択されていない場合はグレー
     return false;
   };
 
