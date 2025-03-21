@@ -157,7 +157,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
               <div className="p-2">
                 <div className="space-y-1">
                   <h3 
-                    className="text-xs font-medium text-gray-800 line-clamp-2 cursor-help"
+                    className="text-xs font-medium text-gray-800 line-clamp-2 cursor-text"
                     onMouseEnter={(e) => handleMouseEnter(item.商品名 || '', e)}
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
