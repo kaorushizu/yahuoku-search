@@ -29,6 +29,7 @@ export const useFilterOptions = (results: AuctionItem[]) => {
    * @returns 抽出されたタグの配列
    */
   const getProductTags = (title: string): ProductTag[] => {
+    if (!title) return [];
     return PRODUCT_TAGS.filter(tag => title.includes(tag.keyword));
   };
 

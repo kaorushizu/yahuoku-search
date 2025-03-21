@@ -167,8 +167,11 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault(); // ブラウザの保存ダイアログを防止
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
+        // document内のすべての検索入力フィールドを探して最初のものにフォーカス
+        const searchInput = document.querySelector('input[type="text"][inputmode="search"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select(); // テキストを全選択
         }
       }
     };

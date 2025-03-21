@@ -38,6 +38,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   const handleMouseEnter = (content: string, e: React.MouseEvent) => {
+    if (!content) return;
     setTooltipContent(content);
     setTooltipPosition({ x: e.clientX, y: e.clientY });
   };
@@ -55,13 +56,13 @@ const ResultsList: React.FC<ResultsListProps> = ({
       {/* ヘッダー情報 */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 bg-white rounded-lg shadow p-3">
         <div className="text-sm text-gray-600">
-          <span className="font-bold text-gray-900">{filteredResults.length.toLocaleString()}</span>
+          <span className="font-bold text-gray-900">{(filteredResults?.length || 0).toLocaleString()}</span>
           <span className="mx-1">件表示</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 text-sm text-gray-600">
             <Package2 size={16} />
-            <span>{filteredResults.length.toLocaleString()}件</span>
+            <span>{(filteredResults?.length || 0).toLocaleString()}件</span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
             {/* 価格ソートボタン */}
@@ -125,8 +126,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
                 className="block aspect-square relative"
               >
                 <img
-                  src={item.画像URL}
-                  alt={item.商品名}
+                  src={item.画像URL || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
+                  alt={item.商品名 || 'タイトルなし'}
                   className="absolute inset-0 w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
@@ -134,7 +135,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
                 />
                 {/* 商品タグ表示 */}
                 <div className="absolute top-0 left-0 p-2 flex flex-wrap gap-1 max-w-[calc(100%-48px)]">
-                  {getProductTags(item.商品名).map((tag, index) => (
+                  {getProductTags(item.商品名 || '').map((tag, index) => (
                     <span
                       key={index}
                       className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${tag.color} shadow-sm backdrop-blur-[2px]`}
@@ -146,8 +147,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
                 {/* 価格情報 */}
                 <div className="absolute bottom-0 left-0 px-2 py-1 m-2 rounded bg-black/60 backdrop-blur-[2px]">
                   <div className="flex items-center gap-2">
-                    <div className="text-white text-lg font-bold drop-shadow">¥{item.落札金額.toLocaleString()}</div>
-                    <div className="text-white text-xs font-medium">{item.入札数}件</div>
+                    <div className="text-white text-lg font-bold drop-shadow">¥{(item.落札金額 ?? 0).toLocaleString()}</div>
+                    <div className="text-white text-xs font-medium">{(item.入札数 ?? 0)}件</div>
                   </div>
                 </div>
               </a>
@@ -157,15 +158,15 @@ const ResultsList: React.FC<ResultsListProps> = ({
                 <div className="space-y-1">
                   <h3 
                     className="text-xs font-medium text-gray-800 line-clamp-2 cursor-help"
-                    onMouseEnter={(e) => handleMouseEnter(item.商品名, e)}
+                    onMouseEnter={(e) => handleMouseEnter(item.商品名 || '', e)}
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
                   >
-                    {item.商品名}
+                    {item.商品名 || 'タイトルなし'}
                   </h3>
                   <div className="flex items-center text-xs text-gray-500">
                     <div className="flex items-center gap-1">
-                      <span>{item.終了日}</span>
+                      <span>{item.終了日 || '終了日不明'}</span>
                     </div>
                   </div>
                 </div>
@@ -184,7 +185,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
                     <input 
                       type="checkbox"
                       className="w-5 h-5 rounded text-blue-500 focus:ring-blue-400"
-                      checked={filteredResults.length > 0 && filteredResults.every(item => selectedItems.has(item.オークションID))}
+                      checked={!!filteredResults?.length && filteredResults.every(item => selectedItems.has(item.オークションID || ''))}
                       onChange={toggleSelectAll}
                     />
                   </th>
@@ -222,13 +223,13 @@ const ResultsList: React.FC<ResultsListProps> = ({
                       <div className="flex items-start gap-3">
                         <div className="relative flex-shrink-0">
                           <a
-                            href={getAuctionUrl(item.オークションID, item.終了日)}
+                            href={getAuctionUrl(item.オークションID || '', item.終了日 || '')}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
                             <ImageMagnifier 
-                              src={item.画像URL} 
-                              alt={item.商品名}
+                              src={item.画像URL || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
+                              alt={item.商品名 || 'タイトルなし'}
                               width="94px"
                               height="94px"
                               className="w-[94px] h-[94px] object-cover bg-white rounded border cursor-pointer hover:ring-2 hover:ring-blue-500"
@@ -238,10 +239,10 @@ const ResultsList: React.FC<ResultsListProps> = ({
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-gray-900 line-clamp-2">
-                            {item.商品名}
+                            {item.商品名 || 'タイトルなし'}
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {getProductTags(item.商品名).map((tag, index) => (
+                            {getProductTags(item.商品名 || '').map((tag, index) => (
                               <span
                                 key={index}
                                 className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium ${tag.color}`}
@@ -255,18 +256,18 @@ const ResultsList: React.FC<ResultsListProps> = ({
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        ¥{item.落札金額.toLocaleString()}
+                        ¥{(item.落札金額 ?? 0).toLocaleString()}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{item.入札数}件</div>
+                      <div className="text-sm text-gray-900">{(item.入札数 ?? 0)}件</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{item.終了日}</div>
+                      <div className="text-sm text-gray-900">{item.終了日 || '終了日不明'}</div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <a
-                        href={getAuctionUrl(item.オークションID, item.終了日)}
+                        href={getAuctionUrl(item.オークションID || '', item.終了日 || '')}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700"
