@@ -1,72 +1,51 @@
 import { useState, useMemo } from 'react';
 import { FilterOptions, AuctionItem, ProductTag } from '../types';
 import { PRODUCT_TAGS } from '../constants/productTags';
+import { useFilterSystem } from './useFilterSystem';
 
 /**
  * フィルタリング機能を提供するカスタムフック
+ * useFilterSystem との互換性を保ちながら、従来のコードとの互換性も維持
+ * 
+ * @param results - フィルタリング対象の商品配列
+ * @returns フィルター関連の状態と機能
  */
 export const useFilterOptions = (results: AuctionItem[]) => {
-  // フィルター状態
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-    selectedTags: [],
-    excludeMultipleBids: false,
-    excludeJunk: false,
-    excludeKeywords: [],
-    excludeSets: false,
-    excludeNew: false,
-    filterKeywords: [],
-    excludeFreeShipping: false
-  });
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [filterKeyword, setFilterKeyword] = useState('');
+  // 内部状態
   const [newFilterKeyword, setNewFilterKeyword] = useState('');
   const [newExcludeKeyword, setNewExcludeKeyword] = useState('');
+  const [filterKeyword, setFilterKeyword] = useState('');
   const [showTags, setShowTags] = useState(false);
+
+  // useFilterSystemを活用
+  const filterSystem = useFilterSystem(getProductTags);
 
   /**
    * 商品名からタグを抽出する関数
    * @param title - 商品名
    * @returns 抽出されたタグの配列
    */
-  const getProductTags = (title: string): ProductTag[] => {
+  function getProductTags(title: string): ProductTag[] {
     if (!title) return [];
     return PRODUCT_TAGS.filter(tag => title.includes(tag.keyword));
-  };
+  }
 
   /**
    * タグフィルターの切り替え関数
    * @param keyword - タグのキーワード
    */
   const toggleTagFilter = (keyword: string) => {
-    setSelectedTags(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(keyword)) {
-        newSet.delete(keyword);
-      } else {
-        newSet.add(keyword);
-      }
-      return newSet;
-    });
+    filterSystem.toggleTagFilter(keyword);
   };
 
   /**
    * 全てのフィルターをリセットする関数
    */
   const resetAllFilters = () => {
-    setSelectedTags(new Set());
     setFilterKeyword('');
     setNewFilterKeyword('');
     setNewExcludeKeyword('');
-    setFilterOptions({
-      selectedTags: [],
-      excludeMultipleBids: false,
-      excludeJunk: false,
-      excludeKeywords: [],
-      excludeSets: false,
-      excludeNew: false,
-      filterKeywords: [],
-      excludeFreeShipping: false
-    });
+    filterSystem.clearAllFilters();
   };
 
   /**
@@ -96,7 +75,7 @@ export const useFilterOptions = (results: AuctionItem[]) => {
    */
   const addFilterKeyword = (keyword: string) => {
     if (!keyword.trim()) return;
-    setFilterOptions(prev => ({
+    filterSystem.setFilterOptions(prev => ({
       ...prev,
       filterKeywords: [...prev.filterKeywords, keyword.trim()]
     }));
@@ -108,7 +87,7 @@ export const useFilterOptions = (results: AuctionItem[]) => {
    */
   const addExcludeKeyword = (keyword: string) => {
     if (!keyword.trim()) return;
-    setFilterOptions(prev => ({
+    filterSystem.setFilterOptions(prev => ({
       ...prev,
       excludeKeywords: [...prev.excludeKeywords, keyword.trim()]
     }));
@@ -119,7 +98,7 @@ export const useFilterOptions = (results: AuctionItem[]) => {
    * 含むキーワードフィルターを削除
    */
   const removeFilterKeyword = (index: number) => {
-    setFilterOptions(prev => ({
+    filterSystem.setFilterOptions(prev => ({
       ...prev,
       filterKeywords: prev.filterKeywords.filter((_, i) => i !== index)
     }));
@@ -129,17 +108,20 @@ export const useFilterOptions = (results: AuctionItem[]) => {
    * 除外キーワードフィルターを削除
    */
   const removeExcludeKeyword = (index: number) => {
-    setFilterOptions(prev => ({
+    filterSystem.setFilterOptions(prev => ({
       ...prev,
       excludeKeywords: prev.excludeKeywords.filter((_, i) => i !== index)
     }));
   };
 
   return {
-    filterOptions,
-    setFilterOptions,
-    selectedTags,
-    setSelectedTags,
+    // useFilterSystemからの状態と機能
+    filterOptions: filterSystem.filterOptions,
+    setFilterOptions: filterSystem.setFilterOptions,
+    selectedTags: filterSystem.selectedTags,
+    setSelectedTags: filterSystem.setSelectedTags,
+    
+    // この機能固有の状態
     filterKeyword,
     setFilterKeyword,
     newFilterKeyword,
@@ -148,6 +130,8 @@ export const useFilterOptions = (results: AuctionItem[]) => {
     setNewExcludeKeyword,
     showTags,
     setShowTags,
+    
+    // 機能
     getProductTags,
     toggleTagFilter,
     resetAllFilters,
@@ -155,6 +139,15 @@ export const useFilterOptions = (results: AuctionItem[]) => {
     addFilterKeyword,
     addExcludeKeyword,
     removeFilterKeyword,
-    removeExcludeKeyword
+    removeExcludeKeyword,
+    
+    // 追加でuseFilterSystemの機能を公開
+    activeFilters: filterSystem.activeFilters,
+    hasActiveFilters: filterSystem.hasActiveFilters,
+    addFilter: filterSystem.addFilter,
+    removeFilter: filterSystem.removeFilter,
+    applyFilters: filterSystem.applyFilters,
+    priceRanges: filterSystem.priceRanges,
+    togglePriceRangeFilter: filterSystem.togglePriceRangeFilter
   };
 }; 

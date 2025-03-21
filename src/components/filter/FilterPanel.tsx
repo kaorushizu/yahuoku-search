@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Tag, CheckCircle2, X, ChevronUp, ChevronDown, Circle } from 'lucide-react';
 import Tooltip from '../common/Tooltip';
 import { FilterOptions, ProductTag } from '../../types';
+import { FilterInfo, FilterType } from '../../hooks/useFilterSystem';
+import ActiveFilters from './ActiveFilters';
 
 interface FilterPanelProps {
   filterOptions: FilterOptions;
@@ -25,6 +27,9 @@ interface FilterPanelProps {
   setIsTagsVisible: React.Dispatch<React.SetStateAction<boolean>>;
   resultsCount: number;
   filteredResultsCount: number;
+  // ActiveFilters関連
+  activeFilters?: FilterInfo[];
+  removeFilter?: (type: FilterType, id: string) => void;
 }
 
 /**
@@ -52,7 +57,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   isTagsVisible,
   setIsTagsVisible,
   resultsCount,
-  filteredResultsCount
+  filteredResultsCount,
+  activeFilters = [],
+  removeFilter
 }) => {
   // キーワード追加ハンドラー
   const handleAddFilterKeyword = () => {
@@ -92,23 +99,91 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
     }));
   };
 
+  // フィルターが適用されているかをチェック
+  const hasFilters = useMemo(() => {
+    return (
+      selectedTags.size > 0 || 
+      filterOptions.filterKeywords.length > 0 || 
+      filterOptions.excludeKeywords.length > 0 || 
+      filterOptions.excludeMultipleBids || 
+      filterOptions.excludeJunk || 
+      filterOptions.excludeNew || 
+      filterOptions.excludeSets ||
+      filterOptions.excludeFreeShipping
+    );
+  }, [
+    selectedTags, 
+    filterOptions.filterKeywords, 
+    filterOptions.excludeKeywords,
+    filterOptions.excludeMultipleBids,
+    filterOptions.excludeJunk,
+    filterOptions.excludeNew,
+    filterOptions.excludeSets,
+    filterOptions.excludeFreeShipping
+  ]);
+
+  // タグをグループごとに整理
+  const organizedTags = useMemo(() => {
+    if (!availableTags.length) return {};
+    
+    return availableTags.reduce((acc, { tag, count }) => {
+      if (!acc[tag.group]) {
+        acc[tag.group] = [];
+      }
+      acc[tag.group].push({ tag, count });
+      return acc;
+    }, {} as Record<string, typeof availableTags>);
+  }, [availableTags]);
+
+  // タグボタンのレンダリング関数
+  const renderTagButton = ({ tag, count }: { tag: ProductTag; count: number }) => {
+    return (
+      <Tooltip key={tag.keyword} text={`${count}件の商品がこのタグを持っています`}>
+        <div
+          onClick={() => toggleTagFilter(tag.keyword)}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer ${
+            selectedTags.has(tag.keyword)
+              ? `${tag.color} shadow-sm`
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          <span>{tag.label}</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${
+            selectedTags.has(tag.keyword) 
+              ? 'bg-white/80 text-gray-700' 
+              : 'bg-white text-gray-500'
+          }`}>
+            {count}
+          </span>
+        </div>
+      </Tooltip>
+    );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-3">
-      {/* フィルターパネルのヘッダー */}
-      <button
+      {/* アクティブフィルター表示（存在する場合） */}
+      {activeFilters.length > 0 && removeFilter && (
+        <ActiveFilters 
+          filters={activeFilters} 
+          onRemoveFilter={removeFilter} 
+          onClearAll={resetAllFilters} 
+        />
+      )}
+
+      {/* フィルターパネルのヘッダー - divを使用 */}
+      <div
         onClick={() => setIsTagsVisible(!isTagsVisible)}
-        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 mb-2"
+        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 mb-2 cursor-pointer"
       >
         <div className="flex items-center gap-1.5">
           <Tag size={16} />
           絞り込み
           <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-            selectedTags.size > 0 || filterKeyword || filterOptions.excludeMultipleBids || filterOptions.excludeJunk || filterOptions.excludeSets || filterOptions.excludeNew
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-gray-100 text-gray-600'
+            hasFilters ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
           }`}>
             {resultsCount.toLocaleString()}件
-            {(selectedTags.size > 0 || filterKeyword || filterOptions.excludeMultipleBids || filterOptions.excludeJunk || filterOptions.excludeSets || filterOptions.excludeNew) && (
+            {hasFilters && (
               <>
                 <span className="mx-0.5">→</span>
                 {filteredResultsCount.toLocaleString()}件
@@ -118,7 +193,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         </div>
         {/* フィルタークリアボタン */}
         <div className="flex items-center gap-1.5">
-          {(selectedTags.size > 0 || filterKeyword || filterOptions.excludeMultipleBids || filterOptions.excludeJunk || filterOptions.excludeSets) && (
+          {hasFilters && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -132,13 +207,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           )}
           {isTagsVisible ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
-      </button>
+      </div>
 
       {/* フィルターコンテンツ */}
       {isTagsVisible && (
         <div className="space-y-4">
           {/* 含む系フィルター */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-blue-400"></div>
               <div className="text-xs font-bold text-gray-600">含む</div>
@@ -190,62 +265,37 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               )}
             </div>
 
-            {/* タグ絞り込み */}
-            <div className="space-y-2">
-              <button
+            {/* タグ絞り込み - divを使用 */}
+            <div className="flex justify-end">
+              <div
                 onClick={() => setShowTags(!showTags)}
-                className="flex items-center justify-end w-full text-xs text-gray-500 hover:text-gray-700"
+                className="flex items-center text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
               >
                 タグで絞り込む
                 {showTags ? <ChevronUp size={14} className="ml-1" /> : <ChevronDown size={14} className="ml-1" />}
-              </button>
-              {showTags && availableTags.length > 0 && (
-                <div className="space-y-2">
-                  {(['状態', 'ジャンク', 'まとめ', '送料'] as const).map(group => {
-                    const groupTags = availableTags.filter(({ tag }) => tag.group === group);
-                    if (groupTags.length === 0) return null;
-
-                    return (
-                      <div key={group} className="bg-gray-100 rounded-md p-2">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <div className="h-1.5 w-1.5 rounded-full bg-gray-400"></div>
-                          <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">{group}</div>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {groupTags.map(({ tag, count }) => (
-                            <button
-                              key={tag.keyword}
-                              onClick={() => toggleTagFilter(tag.keyword)}
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                                selectedTags.has(tag.keyword)
-                                  ? `${tag.color} shadow-sm`
-                                  : 'bg-white text-gray-700'
-                              }`}
-                            >
-                              {selectedTags.has(tag.keyword) && (
-                                <CheckCircle2 size={12} className="flex-shrink-0" />
-                              )}
-                              <span className="font-medium">{tag.label}</span>
-                              <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-medium ${
-                                selectedTags.has(tag.keyword) 
-                                  ? 'bg-white/80 text-gray-700' 
-                                  : 'bg-gray-100 text-gray-500'
-                              }`}>
-                                {count}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              </div>
             </div>
+            {showTags && Object.keys(organizedTags).length > 0 && (
+              <div className="space-y-2 mt-2">
+                {(['状態', 'ジャンク', 'まとめ', '送料'] as const).map(group => {
+                  const groupTags = organizedTags[group];
+                  if (!groupTags || groupTags.length === 0) return null;
+                  
+                  return (
+                    <div key={group} className="space-y-1">
+                      <div className="text-xs text-gray-500">{group}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {groupTags.map(item => renderTagButton(item))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* 除外系フィルター */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-red-400"></div>
               <div className="text-xs font-bold text-gray-600">除外</div>
@@ -254,14 +304,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
             {/* 除外キーワード入力 */}
             <div className="space-y-2">
               <div className="relative">
-                <Tag size={16} className="absolute left-3 top-2.5 text-gray-400" />
+                <X size={16} className="absolute left-3 top-2.5 text-gray-400" />
                 <input
                   type="text"
                   value={newExcludeKeyword}
                   onChange={(e) => setNewExcludeKeyword(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.nativeEvent.isComposing && newExcludeKeyword.trim()) {
-                      e.preventDefault();
                       handleAddExcludeKeyword();
                     }
                   }}
@@ -298,79 +347,69 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               )}
             </div>
 
-            {/* 除外ボタン */}
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 mt-2">
               <Tooltip text="「入札1」を除外">
-                <button
+                <div
                   onClick={() => setFilterOptions(prev => ({ ...prev, excludeMultipleBids: !prev.excludeMultipleBids }))}
-                  className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                  className={`px-2 py-1 border rounded text-xs transition-colors duration-200 cursor-pointer ${
                     filterOptions.excludeMultipleBids
-                      ? 'bg-red-50 text-red-700 border-red-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      ? 'bg-red-50 text-red-700 border-red-300'
+                      : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                   }`}
                 >
                   入札1
-                </button>
+                </div>
               </Tooltip>
               <Tooltip text="「ジャンク」「現状品」を除外">
-                <button
+                <div
                   onClick={() => setFilterOptions(prev => ({ ...prev, excludeJunk: !prev.excludeJunk }))}
-                  className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                  className={`px-2 py-1 border rounded text-xs transition-colors duration-200 cursor-pointer ${
                     filterOptions.excludeJunk
-                      ? 'bg-red-50 text-red-700 border-red-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      ? 'bg-red-50 text-red-700 border-red-300'
+                      : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                   }`}
                 >
-                  ジャンク
-                </button>
+                  ジャンク品
+                </div>
               </Tooltip>
               <Tooltip text="「まとめ」「セット」を除外">
-                <button
+                <div
                   onClick={() => setFilterOptions(prev => ({ ...prev, excludeSets: !prev.excludeSets }))}
-                  className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                  className={`px-2 py-1 border rounded text-xs transition-colors duration-200 cursor-pointer ${
                     filterOptions.excludeSets
-                      ? 'bg-red-50 text-red-700 border-red-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      ? 'bg-red-50 text-red-700 border-red-300'
+                      : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                   }`}
                 >
-                  まとめ
-                </button>
+                  セット商品
+                </div>
               </Tooltip>
               <Tooltip text="「新品」「未使用」「未開封」を除外">
-                <button
+                <div
                   onClick={() => setFilterOptions(prev => ({ ...prev, excludeNew: !prev.excludeNew }))}
-                  className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                  className={`px-2 py-1 border rounded text-xs transition-colors duration-200 cursor-pointer ${
                     filterOptions.excludeNew
-                      ? 'bg-red-50 text-red-700 border-red-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      ? 'bg-red-50 text-red-700 border-red-300'
+                      : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                   }`}
                 >
                   新品
-                </button>
+                </div>
               </Tooltip>
-              <Tooltip text="「送料無料」「送料込み」を除外">
-                <button
+              <Tooltip text="「送料無料」「送料込」を除外">
+                <div
                   onClick={() => setFilterOptions(prev => ({ ...prev, excludeFreeShipping: !prev.excludeFreeShipping }))}
-                  className={`px-2 py-1.5 border rounded text-xs transition-colors duration-200 ${
+                  className={`px-2 py-1 border rounded text-xs transition-colors duration-200 cursor-pointer ${
                     filterOptions.excludeFreeShipping
-                      ? 'bg-red-50 text-red-700 border-red-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      ? 'bg-red-50 text-red-700 border-red-300'
+                      : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                   }`}
                 >
                   送料無料
-                </button>
+                </div>
               </Tooltip>
             </div>
           </div>
-
-          {/* フィルタークリアボタン */}
-          <button
-            onClick={resetAllFilters}
-            className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1.5"
-          >
-            <X size={14} />
-            全ての絞り込みをクリア
-          </button>
         </div>
       )}
     </div>

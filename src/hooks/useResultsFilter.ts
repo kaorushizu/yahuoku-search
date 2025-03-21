@@ -1,17 +1,18 @@
 import { useMemo } from 'react';
-import { AuctionItem, FilterOptions, SortOrder } from '../types';
+import { AuctionItem, FilterOptions, SortOrder, ProductTag } from '../types';
 
 /**
  * 検索結果をフィルタリングするカスタムフック
+ * 複数の条件に基づいて商品をフィルタリングする
  * 
  * @param results - フィルタリングする商品の配列
  * @param filterOptions - フィルタリングオプション
- * @param sortOrder - ソート順
+ * @param sortOrder - ソート順（価格の昇順/降順）
  * @param selectedItems - 選択されたアイテムのID
  * @param showSelectedOnly - 選択されたアイテムのみ表示するかどうか
  * @param selectedTags - 選択されたタグ
  * @param getProductTags - 商品名からタグを抽出する関数
- * @returns フィルタリングされた商品の配列
+ * @returns フィルタリングおよびソートされた商品の配列
  */
 export const useResultsFilter = (
   results: AuctionItem[],
@@ -20,13 +21,31 @@ export const useResultsFilter = (
   selectedItems: Set<string>,
   showSelectedOnly: boolean,
   selectedTags: Set<string>,
-  getProductTags: (title: string) => { keyword: string; label: string; color: string; group: string }[]
+  getProductTags: (title: string) => ProductTag[]
 ) => {
   /**
-   * 検索結果をフィルタリングする
-   * 選択された商品、タグ、キーワード、その他の条件に基づいて結果を絞り込む
+   * フィルタリングとソートを適用した結果を返す
    */
-  const filteredResults = useMemo(() => {
+  return useMemo(() => {
+    // パフォーマンス最適化のため、初期ステップでフィルタリングが不要な場合はすぐに結果を返す
+    const noFiltersApplied = (
+      !showSelectedOnly && 
+      selectedTags.size === 0 && 
+      !filterOptions.excludeJunk && 
+      !filterOptions.excludeMultipleBids && 
+      !filterOptions.excludeNew && 
+      !filterOptions.excludeSets && 
+      !filterOptions.excludeFreeShipping && 
+      filterOptions.filterKeywords.length === 0 && 
+      filterOptions.excludeKeywords.length === 0 && 
+      sortOrder === 'none'
+    );
+    
+    if (noFiltersApplied && results.length > 0) {
+      return results;
+    }
+    
+    // コピーを作成してから処理を行う
     let filtered = [...results];
 
     // 選択された商品のみを表示するフィルター
@@ -42,7 +61,7 @@ export const useResultsFilter = (
       });
     }
 
-    // キーワードによるフィルタリング（含む）
+    // キーワードによるフィルタリング（含む - AND条件）
     if (filterOptions.filterKeywords.length > 0) {
       filtered = filtered.filter(item => 
         filterOptions.filterKeywords.every(keyword => 
@@ -68,30 +87,33 @@ export const useResultsFilter = (
     // ジャンク品のフィルター
     if (filterOptions.excludeJunk) {
       filtered = filtered.filter(item => 
-        !item.商品名.includes('ジャンク') && !item.商品名.includes('現状品')
+        !item.商品名.toLowerCase().includes('ジャンク') && 
+        !item.商品名.toLowerCase().includes('現状品')
       );
     }
 
     // セット商品のフィルター
     if (filterOptions.excludeSets) {
       filtered = filtered.filter(item => 
-        !item.商品名.includes('まとめ') && !item.商品名.includes('セット')
+        !item.商品名.toLowerCase().includes('まとめ') && 
+        !item.商品名.toLowerCase().includes('セット')
       );
     }
 
-    // 新品のフィルター
+    // 新品商品のフィルター
     if (filterOptions.excludeNew) {
       filtered = filtered.filter(item => 
-        !item.商品名.includes('新品') && 
-        !item.商品名.includes('未使用') && 
-        !item.商品名.includes('未開封')
+        !item.商品名.toLowerCase().includes('新品') &&
+        !item.商品名.toLowerCase().includes('未使用') &&
+        !item.商品名.toLowerCase().includes('未開封')
       );
     }
 
-    // 送料無料のフィルター
+    // 送料無料商品のフィルター
     if (filterOptions.excludeFreeShipping) {
       filtered = filtered.filter(item => 
-        !item.商品名.includes('送料無料') && !item.商品名.includes('送料込み')
+        !item.商品名.toLowerCase().includes('送料無料') && 
+        !item.商品名.toLowerCase().includes('送料込')
       );
     }
 
@@ -107,7 +129,13 @@ export const useResultsFilter = (
     }
 
     return filtered;
-  }, [results, filterOptions, sortOrder, selectedItems, showSelectedOnly, selectedTags, getProductTags]);
-
-  return filteredResults;
+  }, [
+    results,
+    filterOptions,
+    sortOrder,
+    selectedItems,
+    showSelectedOnly,
+    selectedTags,
+    getProductTags
+  ]);
 }; 

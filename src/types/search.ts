@@ -18,7 +18,7 @@ export interface SearchParams {
  */
 export interface FilterOptions {
   selectedTags: string[];        // 選択された商品タグのリスト
-  excludeMultipleBids: boolean;  // 入札数が1回の商品を除外するかどうか
+  excludeMultipleBids: boolean;  // 入札数が少ない商品のみを表示するかどうか
   excludeJunk: boolean;         // ジャンク品を除外するかどうか
   excludeKeywords: string[];    // 除外するキーワードのリスト
   excludeSets: boolean;         // セット商品を除外するかどうか

@@ -1,55 +1,75 @@
 import { useState, useCallback, useMemo } from 'react';
-import { AuctionItem, FilterOptions } from '../types';
+import { AuctionItem, FilterOptions, ProductTag } from '../types';
 
-// すべてのフィルタータイプを定義
+/**
+ * フィルタータイプの定義
+ * アプリケーション内で使用される様々なフィルターの種類を表す
+ */
 export type FilterType = 
   | 'price'      // 価格範囲
-  | 'keyword'    // キーワード
-  | 'exclude'    // 除外キーワード
+  | 'keyword'    // キーワード（含む）
+  | 'exclude'    // 除外キーワード 
   | 'tag'        // タグ
-  | 'condition'  // 状態（新品/中古）
+  | 'condition'  // 状態（新品/中古/ジャンクなど）
   | 'shipping'   // 送料
   | 'selection'; // 選択された商品
 
-// 価格範囲フィルターの型
+/**
+ * 価格範囲フィルターの型定義
+ */
 export interface PriceRange {
-  min: number;
-  max: number;
-  label: string;
+  min: number;    // 最小価格
+  max: number;    // 最大価格
+  label: string;  // 表示ラベル
 }
 
-// フィルター情報の型
+/**
+ * フィルター情報の型定義
+ * UI表示および内部処理に使用
+ */
 export interface FilterInfo {
-  type: FilterType;
-  label: string;
-  value: any;
-  id: string;
+  type: FilterType;  // フィルタータイプ
+  label: string;     // 表示ラベル
+  value: any;        // フィルター値
+  id: string;        // 一意の識別子
 }
 
-// フィルター状態管理
-export const useFilterSystem = (getProductTags: (title: string) => Array<{keyword: string, count: number}>) => {
-  // 基本フィルター
+/**
+ * 統合フィルターシステムを提供するカスタムフック
+ * すべてのフィルタリング機能を一元管理
+ * 
+ * @param getProductTags - 商品名からタグを抽出する関数
+ * @returns フィルター関連の状態と機能
+ */
+export const useFilterSystem = (
+  getProductTags: (title: string) => ProductTag[]
+) => {
+  // 基本フィルターオプション
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-    filterKeywords: [],
-    excludeKeywords: [],
-    excludeJunk: false,
-    excludeMultipleBids: false,
-    excludeNew: false,
-    excludeSets: false,
-    excludeFreeShipping: false,
+    filterKeywords: [],      // 含むキーワード
+    excludeKeywords: [],     // 除外キーワード
+    excludeJunk: false,      // ジャンク品除外
+    excludeMultipleBids: false, // 入札多数の商品除外
+    excludeNew: false,       // 新品除外
+    excludeSets: false,      // セット商品除外
+    excludeFreeShipping: false, // 送料無料商品除外
+    selectedTags: [],        // 選択されたタグ
   });
 
   // 価格範囲フィルター
   const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
   
-  // タグフィルター
+  // タグフィルター（Set型で重複を防止）
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   
   // 選択商品フィルター
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
-  // アクティブフィルター情報を取得
+  /**
+   * 現在アクティブなフィルターを生成
+   * UI表示用のフィルター情報の配列を作成
+   */
   const activeFilters = useMemo(() => {
     const filters: FilterInfo[] = [];
     
@@ -65,7 +85,7 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
       });
     });
     
-    // キーワードフィルター
+    // キーワードフィルター（含む）
     filterOptions.filterKeywords.forEach((keyword, index) => {
       filters.push({
         type: 'keyword',
@@ -95,7 +115,7 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
       });
     });
     
-    // その他のフィルター
+    // その他のフィルター（チェックボックス系）
     if (filterOptions.excludeJunk) {
       filters.push({type: 'condition', label: 'ジャンク品を除外', value: true, id: 'excludeJunk'});
     }
@@ -125,7 +145,11 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
     showSelectedOnly
   ]);
 
-  // フィルターの追加
+  /**
+   * フィルターを追加する関数
+   * @param type - フィルタータイプ
+   * @param value - フィルター値
+   */
   const addFilter = useCallback((type: FilterType, value: any) => {
     switch (type) {
       case 'price':
@@ -159,7 +183,11 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
     }
   }, []);
 
-  // フィルターの削除
+  /**
+   * フィルターを削除する関数
+   * @param type - フィルタータイプ
+   * @param id - フィルターID
+   */
   const removeFilter = useCallback((type: FilterType, id: string) => {
     switch (type) {
       case 'price':
@@ -207,7 +235,9 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
     }
   }, [selectedTags]);
 
-  // すべてのフィルターをクリア
+  /**
+   * すべてのフィルターをクリアする関数
+   */
   const clearAllFilters = useCallback(() => {
     setFilterOptions({
       filterKeywords: [],
@@ -217,13 +247,19 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
       excludeNew: false,
       excludeSets: false,
       excludeFreeShipping: false,
+      selectedTags: [],
     });
     setPriceRanges([]);
     setSelectedTags(new Set());
     setShowSelectedOnly(false);
   }, []);
 
-  // 価格範囲フィルター
+  /**
+   * 価格範囲フィルターを切り替える関数
+   * @param rangeStart - 開始価格
+   * @param rangeEnd - 終了価格
+   * @param rangeText - 表示テキスト
+   */
   const togglePriceRangeFilter = useCallback((rangeStart: number, rangeEnd: number, rangeText: string) => {
     // 同じ範囲がすでに選択されているか確認
     const isAlreadySelected = priceRanges.some(
@@ -246,7 +282,49 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
     }
   }, [priceRanges]);
 
-  // フィルター適用（すべてのフィルター処理を統合）
+  /**
+   * タグフィルターの切り替え関数
+   * @param tagKeyword - タグのキーワード
+   */
+  const toggleTagFilter = useCallback((tagKeyword: string) => {
+    console.log('タグ切り替え:', tagKeyword);
+    console.log('切り替え前のタグ:', [...selectedTags]);
+
+    setSelectedTags(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(tagKeyword)) {
+        newSet.delete(tagKeyword);
+      } else {
+        newSet.add(tagKeyword);
+      }
+      console.log('切り替え後のタグ:', [...newSet]);
+      return newSet;
+    });
+    
+    // filterOptionsのselectedTagsも更新
+    setFilterOptions(prev => {
+      const updatedTags = [...prev.selectedTags];
+      const tagIndex = updatedTags.indexOf(tagKeyword);
+      
+      if (tagIndex >= 0) {
+        updatedTags.splice(tagIndex, 1);
+      } else {
+        updatedTags.push(tagKeyword);
+      }
+      
+      console.log('更新後のfilterOptions.selectedTags:', updatedTags);
+      return {
+        ...prev,
+        selectedTags: updatedTags
+      };
+    });
+  }, []);
+
+  /**
+   * すべてのフィルター条件を適用する関数
+   * @param itemsToFilter - フィルタリング対象の商品配列
+   * @returns フィルタリング後の商品配列
+   */
   const applyFilters = useCallback((itemsToFilter: AuctionItem[]) => {
     let filteredItems = [...itemsToFilter];
     
@@ -261,29 +339,33 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
       });
     }
     
-    // キーワードフィルター
+    // キーワードフィルター（含む）
     if (filterOptions.filterKeywords.length > 0) {
-      const keywords = filterOptions.filterKeywords.map(kw => kw.toLowerCase());
       filteredItems = filteredItems.filter(item => {
         const title = item.商品名.toLowerCase();
-        return keywords.some(keyword => title.includes(keyword));
+        return filterOptions.filterKeywords.every(keyword => 
+          title.includes(keyword.toLowerCase())
+        );
       });
     }
     
     // 除外キーワード
     if (filterOptions.excludeKeywords.length > 0) {
-      const excludeKeywords = filterOptions.excludeKeywords.map(kw => kw.toLowerCase());
       filteredItems = filteredItems.filter(item => {
         const title = item.商品名.toLowerCase();
-        return !excludeKeywords.some(keyword => title.includes(keyword));
+        return !filterOptions.excludeKeywords.some(keyword => 
+          title.includes(keyword.toLowerCase())
+        );
       });
     }
     
     // タグフィルター
     if (selectedTags.size > 0) {
+      console.log('フィルタリング適用中のタグ:', [...selectedTags]);
       filteredItems = filteredItems.filter(item => {
         const itemTags = getProductTags(item.商品名);
-        return itemTags.some(tag => selectedTags.has(tag.keyword));
+        const result = itemTags.some(tag => selectedTags.has(tag.keyword));
+        return result;
       });
     }
     
@@ -294,23 +376,36 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
     
     // その他のフィルター（ジャンク品、新品、入札多数など）
     if (filterOptions.excludeJunk) {
-      filteredItems = filteredItems.filter(item => !item.商品名.toLowerCase().includes('ジャンク'));
+      filteredItems = filteredItems.filter(item => 
+        !item.商品名.toLowerCase().includes('ジャンク') &&
+        !item.商品名.toLowerCase().includes('現状品')
+      );
     }
     
     if (filterOptions.excludeNew) {
-      filteredItems = filteredItems.filter(item => item.状態 !== '新品');
+      filteredItems = filteredItems.filter(item => 
+        !item.商品名.toLowerCase().includes('新品') &&
+        !item.商品名.toLowerCase().includes('未使用') &&
+        !item.商品名.toLowerCase().includes('未開封')
+      );
     }
     
     if (filterOptions.excludeMultipleBids) {
-      filteredItems = filteredItems.filter(item => item.入札件数 <= 1);
+      filteredItems = filteredItems.filter(item => item.入札数 >= 2);
     }
     
     if (filterOptions.excludeSets) {
-      filteredItems = filteredItems.filter(item => !item.商品名.toLowerCase().includes('セット'));
+      filteredItems = filteredItems.filter(item => 
+        !item.商品名.toLowerCase().includes('まとめ') &&
+        !item.商品名.toLowerCase().includes('セット')
+      );
     }
     
     if (filterOptions.excludeFreeShipping) {
-      filteredItems = filteredItems.filter(item => item.送料負担 !== '落札者');
+      filteredItems = filteredItems.filter(item => 
+        !item.商品名.toLowerCase().includes('送料無料') &&
+        !item.商品名.toLowerCase().includes('送料込')
+      );
     }
     
     return filteredItems;
@@ -323,7 +418,9 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
     getProductTags
   ]);
 
-  // フィルターが適用されているか
+  /**
+   * フィルターが適用されているかどうかを確認
+   */
   const hasActiveFilters = useMemo(() => {
     return activeFilters.length > 0;
   }, [activeFilters]);
@@ -347,6 +444,7 @@ export const useFilterSystem = (getProductTags: (title: string) => Array<{keywor
     clearAllFilters,
     applyFilters,
     togglePriceRangeFilter,
+    toggleTagFilter,
     
     // 情報
     activeFilters,

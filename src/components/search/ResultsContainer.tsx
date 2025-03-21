@@ -6,6 +6,12 @@ import FilterPanel from '../filter/FilterPanel';
 import LoadingIndicator from '../common/LoadingIndicator';
 import { useStatistics } from '../../hooks/useStatistics';
 
+// 新しく作成したコンポーネントをインポート
+import PaginationControls from './PaginationControls';
+import EmptyResults from './EmptyResults';
+import ErrorDisplay from './ErrorDisplay';
+import PriceRangeFilters from './PriceRangeFilters';
+
 interface ResultsContainerProps {
   results: AuctionItem[];
   filteredResults: AuctionItem[];
@@ -198,7 +204,7 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
   }, [setClearPriceRangeFilters]);
 
   // フィルターが適用されているかどうかをチェックする関数
-  const hasAnyFilter = () => {
+  const hasAnyFilter = useCallback(() => {
     return selectedPriceRanges.length > 0 || 
            selectedTags.size > 0 || 
            filterOptions.filterKeywords.length > 0 || 
@@ -207,17 +213,14 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
            filterOptions.excludeMultipleBids || 
            filterOptions.excludeNew || 
            filterOptions.excludeSets || 
-           filterOptions.excludeFreeShipping;
-  };
-
-  // エラーメッセージの表示
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
-        {error}
-      </div>
-    );
-  }
+           filterOptions.excludeFreeShipping ||
+           showSelectedOnly;
+  }, [
+    selectedPriceRanges.length,
+    selectedTags.size,
+    filterOptions,
+    showSelectedOnly
+  ]);
 
   // 検索中のローディング表示
   if (isLoading && results.length === 0) {
@@ -228,14 +231,14 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
     );
   }
 
+  // エラーメッセージの表示
+  if (error) {
+    return <ErrorDisplay message={error} />;
+  }
+
   // 検索結果がない場合
   if (!isLoading && results.length === 0 && currentSearchKeyword) {
-    return (
-      <div className="flex flex-col justify-center items-center h-[calc(100vh-20rem)]">
-        <div className="text-lg font-medium text-gray-700 mb-2">検索結果がありません</div>
-        <div className="text-gray-500">別のキーワードで検索してみてください</div>
-      </div>
-    );
+    return <EmptyResults keyword={currentSearchKeyword} />;
   }
   
   return (
@@ -289,43 +292,13 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
           )}
           
           {/* 価格範囲フィルター表示 */}
-          {selectedPriceRanges.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-sm font-medium text-blue-800">
-                  価格範囲フィルター
-                </div>
-                <button 
-                  onClick={clearAllPriceRangeFilters}
-                  className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                >
-                  すべてクリア
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1 mb-2">
-                {selectedPriceRanges.map((range, index) => (
-                  <div key={index} className="flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                    {range.max === Number.MAX_SAFE_INTEGER 
-                      ? `¥${range.min.toLocaleString()}以上` 
-                      : `¥${range.min.toLocaleString()}～¥${range.max.toLocaleString()}`}
-                    <button 
-                      className="ml-1 text-blue-600 hover:text-blue-800"
-                      onClick={() => {
-                        setSelectedPriceRanges(prev => 
-                          prev.filter((_, i) => i !== index)
-                        );
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="text-xs text-blue-600">
-                {priceFilteredResults.length}件表示 ({filteredResults.length}件中)
-              </div>
-            </div>
-          )}
+          <PriceRangeFilters
+            selectedPriceRanges={selectedPriceRanges}
+            setSelectedPriceRanges={setSelectedPriceRanges}
+            clearAllPriceRangeFilters={clearAllPriceRangeFilters}
+            filteredResultsCount={priceFilteredResults.length}
+            totalResultsCount={filteredResults.length}
+          />
         </div>
       </div>
 
@@ -361,54 +334,16 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
               toggleSelectAll={handleToggleSelectAll}
             />
 
-            {/* ページネーションボタン - フィルターが適用されている場合 */}
-            {!isLoading && currentPage < totalPages && (showSelectedOnly || selectedTags.size > 0 || 
-              filterOptions.filterKeywords.length > 0 || filterOptions.excludeKeywords.length > 0 || 
-              filterOptions.excludeJunk || filterOptions.excludeMultipleBids || 
-              filterOptions.excludeNew || filterOptions.excludeSets || filterOptions.excludeFreeShipping || 
-              hasPriceRangeFilter) && (
-              <div className="mt-4 mb-8">
-                <button 
-                  onClick={() => loadMore()}
-                  disabled={isLoadingMore}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow p-4 transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  {isLoadingMore ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                      <span>読み込み中...</span>
-                    </>
-                  ) : (
-                    <span>次のページを読み込む</span>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* 無限スクロール用のローディングインジケーター - フィルターが適用されていない場合 */}
-            {!isLoading && currentPage < totalPages && !(
-              showSelectedOnly || 
-              selectedTags.size > 0 || 
-              filterOptions.filterKeywords.length > 0 || 
-              filterOptions.excludeKeywords.length > 0 || 
-              filterOptions.excludeJunk || 
-              filterOptions.excludeMultipleBids || 
-              filterOptions.excludeNew || 
-              filterOptions.excludeSets || 
-              filterOptions.excludeFreeShipping ||
-              hasPriceRangeFilter
-            ) && (
-              <div ref={observerTarget} className="mt-4 mb-8">
-                <button 
-                  onClick={() => loadMore()}
-                  disabled={isLoadingMore}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow p-4 transition-colors duration-200 flex items-center justify-center gap-3"
-                >
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                  <span>次のページを読み込み中...</span>
-                </button>
-              </div>
-            )}
+            {/* ページネーションコントロール */}
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              isLoading={isLoading}
+              isLoadingMore={isLoadingMore}
+              loadMore={loadMore}
+              hasFilters={hasAnyFilter()}
+              observerTarget={observerTarget}
+            />
           </div>
         )}
       </div>
