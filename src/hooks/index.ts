@@ -10,4 +10,7 @@ export * from './useResultsFilter';
 export * from './useItemSelection';
 
 // 統計情報関連のフック
-export * from './useStatistics'; 
+export * from './useStatistics';
+
+// 商品詳細関連のフック
+export * from './useProductDetail'; 

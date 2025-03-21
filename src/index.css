@@ -1,3 +1,60 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Swiperカスタムスタイル */
+.swiper-button-next,
+.swiper-button-prev {
+  color: white !important;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  width: 40px !important;
+  height: 40px !important;
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+  font-size: 18px !important;
+}
+
+.swiper-pagination-bullet {
+  background: white !important;
+  opacity: 0.7 !important;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1 !important;
+}
+
+/* サムネイルスライダーのカスタムスタイル */
+.thumbs-swiper .swiper-slide {
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.thumbs-swiper .swiper-slide-thumb-active {
+  opacity: 1;
+}
+
+/* スクロールバーを非表示にする */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ズーム機能のスタイル */
+.swiper-zoom-container {
+  cursor: zoom-in;
+}
+
+.swiper-zoom-container.zoomed {
+  cursor: grab;
+}
+
+.swiper-zoom-container.zoomed:active {
+  cursor: grabbing;
+}

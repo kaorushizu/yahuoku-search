@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ExternalLink, CheckCircle2, Circle, Package2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import ImageMagnifier from '../common/ImageMagnifier';
 import { AuctionItem, ProductTag, SortOrder } from '../../types';
+import ProductDrawer from '../common/ProductDrawer';
+import { useProductDetail } from '../../hooks';
 
 interface ResultsListProps {
   filteredResults: AuctionItem[];
@@ -36,6 +38,11 @@ const ResultsList: React.FC<ResultsListProps> = ({
 }) => {
   const [tooltipContent, setTooltipContent] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<AuctionItem | null>(null);
+  
+  // 商品詳細APIフック
+  const { isLoading, error, productDetail, fetchProductDetail, clearProductDetail } = useProductDetail();
 
   const handleMouseEnter = (content: string, e: React.MouseEvent) => {
     if (!content) return;
@@ -49,6 +56,24 @@ const ResultsList: React.FC<ResultsListProps> = ({
 
   const handleMouseLeave = () => {
     setTooltipContent(null);
+  };
+
+  const handleProductClick = async (product: AuctionItem, e: React.MouseEvent) => {
+    e.preventDefault();
+    setSelectedProduct(product);
+    setIsDrawerOpen(true);
+    
+    // ドロワーを開くと同時に商品詳細APIを呼び出す
+    // 落札日も一緒に渡して、API取得先を判断できるようにする
+    if (product.オークションID) {
+      await fetchProductDetail(product.オークションID, product.終了日 || '');
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    // ドロワーを閉じるときに商品詳細情報をクリア
+    clearProductDetail();
   };
 
   return (
@@ -118,12 +143,10 @@ const ResultsList: React.FC<ResultsListProps> = ({
                 )}
               </button>
               
-              {/* 商品画像とタグ (リンク付き) */}
-              <a
-                href={getAuctionUrl(item.オークションID, item.終了日)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block aspect-square relative"
+              {/* 商品画像とタグ (ドロワーを開くように変更) */}
+              <div 
+                className="block aspect-square relative cursor-pointer"
+                onClick={(e) => handleProductClick(item, e)}
               >
                 <img
                   src={item.画像URL || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
@@ -151,13 +174,16 @@ const ResultsList: React.FC<ResultsListProps> = ({
                     <div className="text-white text-xs font-medium">{(item.入札数 ?? 0)}件</div>
                   </div>
                 </div>
-              </a>
+              </div>
               
-              {/* 商品名と終了日 (リンクなし) */}
-              <div className="p-2">
+              {/* 商品名と終了日 (クリックでドロワーを開く) */}
+              <div 
+                className="p-2 cursor-pointer"
+                onClick={(e) => handleProductClick(item, e)}
+              >
                 <div className="space-y-1">
                   <h3 
-                    className="text-xs font-medium text-gray-800 line-clamp-2 cursor-text"
+                    className="text-xs font-medium text-gray-800 line-clamp-2"
                     onMouseEnter={(e) => handleMouseEnter(item.商品名 || '', e)}
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
@@ -198,8 +224,12 @@ const ResultsList: React.FC<ResultsListProps> = ({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredResults.map((item) => (
-                  <tr key={item.オークションID} className="group hover:bg-gray-50">
-                    <td className="px-2 py-3 text-center">
+                  <tr 
+                    key={item.オークションID} 
+                    className="group hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => handleProductClick(item, e)}
+                  >
+                    <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
                       <input 
                         type="checkbox"
                         className={`w-5 h-5 rounded text-blue-500 focus:ring-blue-400 ${
@@ -212,6 +242,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
                           toggleItemSelection(item.オークションID);
                         }}
                         onClick={(e) => {
+                          e.stopPropagation();
                           if (e.shiftKey) {
                             e.preventDefault();
                             handleRangeSelection(item.オークションID);
@@ -222,23 +253,24 @@ const ResultsList: React.FC<ResultsListProps> = ({
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-3">
                         <div className="relative flex-shrink-0">
-                          <a
-                            href={getAuctionUrl(item.オークションID || '', item.終了日 || '')}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <div
+                            className="cursor-pointer"
                           >
                             <ImageMagnifier 
                               src={item.画像URL || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
                               alt={item.商品名 || 'タイトルなし'}
                               width="94px"
                               height="94px"
-                              className="w-[94px] h-[94px] object-cover bg-white rounded border cursor-pointer hover:ring-2 hover:ring-blue-500"
+                              className="w-[94px] h-[94px] object-cover bg-white rounded border hover:ring-2 hover:ring-blue-500"
                               fallbackSrc="https://images.unsplash.com/photo-1523275335684-37898b6baf30"
                             />
-                          </a>
+                          </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-gray-900 line-clamp-2">
+                          <div 
+                            className="text-sm text-gray-900 line-clamp-2 cursor-text select-text"
+                            onClick={e => e.stopPropagation()}
+                          >
                             {item.商品名 || 'タイトルなし'}
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -254,26 +286,25 @@ const ResultsList: React.FC<ResultsListProps> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                    <td className="px-4 py-3 text-right">
+                      <div className="text-sm font-semibold text-gray-900">
                         ¥{(item.落札金額 ?? 0).toLocaleString()}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{(item.入札数 ?? 0)}件</div>
+                    <td className="px-4 py-3 text-right">
+                      <div className="text-sm text-gray-900">{item.入札数 ?? 0}件</div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{item.終了日 || '終了日不明'}</div>
+                    <td className="px-4 py-3">
+                      <div className="text-sm text-gray-600">{item.終了日 || '終了日不明'}</div>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                       <a
                         href={getAuctionUrl(item.オークションID || '', item.終了日 || '')}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700"
+                        className="text-blue-600 hover:text-blue-800"
                       >
-                        <ExternalLink size={12} />
-                        開く
+                        <ExternalLink size={16} />
                       </a>
                     </td>
                   </tr>
@@ -284,21 +315,31 @@ const ResultsList: React.FC<ResultsListProps> = ({
         </div>
       )}
 
-      {/* カスタムツールチップ */}
+      {/* ツールチップ */}
       {tooltipContent && (
-        <div 
-          className="fixed bg-gray-800 text-white text-xs rounded px-3 py-2 max-w-sm z-50 pointer-events-none shadow-lg"
-          style={{ 
-            left: `${tooltipPosition.x}px`, 
+        <div
+          className="fixed z-50 bg-gray-900 text-white text-xs rounded py-1 px-2 max-w-sm pointer-events-none"
+          style={{
+            left: `${tooltipPosition.x}px`,
             top: `${tooltipPosition.y}px`,
             transform: 'translateX(-50%)',
-            opacity: 0.95,
-            transition: 'opacity 0.15s ease-in-out'
           }}
         >
           {tooltipContent}
         </div>
       )}
+
+      {/* 商品詳細ドロワー */}
+      <ProductDrawer 
+        isOpen={isDrawerOpen}
+        onClose={handleCloseDrawer}
+        product={selectedProduct}
+        productDetail={productDetail}
+        isLoading={isLoading}
+        error={error}
+        getProductTags={getProductTags}
+        getAuctionUrl={getAuctionUrl}
+      />
     </div>
   );
 };

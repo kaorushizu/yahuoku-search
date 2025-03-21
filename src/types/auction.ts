@@ -40,4 +40,34 @@ export interface ProductTag {
 export interface TagCount {
   tag: ProductTag;             // タグの情報
   count: number;               // そのタグが付与されている商品数
+}
+
+/**
+ * 商品詳細APIのレスポンス型
+ * 商品の詳細情報を含む
+ */
+export interface ProductDetailResponse {
+  auctionId: string;           // オークションID
+  title: string;               // 商品タイトル
+  keyword: string | null;      // 検索キーワード
+  quantity: number;            // 数量
+  biddersNum: number;          // 入札者数
+  watchListNum: number;        // ウォッチリスト数
+  price: number;               // 価格
+  startPrice: number;          // 開始価格
+  bidCount: number;            // 入札数
+  condition: string;           // 商品状態
+  endDate: string;             // 終了日時
+  endDateUnix: number;         // 終了日時(UNIX時間)
+  images: string[];            // 商品画像URL配列
+  description: string;         // 商品説明
+  categories: {                // カテゴリー情報
+    name: string;              // カテゴリー名
+    id: string;                // カテゴリーID
+  }[];
+  brands: any | null;          // ブランド情報
+  seller: any | null;          // 出品者情報
+  shipping: any | null;        // 配送情報
+  tax: any | null;             // 税情報
+  url: string;                 // 商品URL
 } 
