@@ -12,6 +12,7 @@ interface PriceRange {
 
 interface StatisticsPanelProps {
   statistics: Statistics;
+  currentStatistics?: Statistics | null;
   isCompact?: boolean;
   isVisible?: boolean;
   onToggleVisibility?: () => void;
@@ -44,6 +45,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameT
  */
 const StatisticsPanel: React.FC<StatisticsPanelProps> = ({ 
   statistics, 
+  currentStatistics = null,
   isCompact = false, 
   isVisible = true,
   onToggleVisibility,
@@ -103,26 +105,31 @@ const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
     };
   };
 
-  const renderStats = () => (
-    <div className={`grid ${isCompact ? 'grid-cols-2' : 'grid-cols-4'} gap-2`}>
-      <div className="bg-gray-100 rounded-md p-2">
-        <div className="text-sm text-gray-600 mb-0.5">中央値</div>
-        <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.median.toLocaleString()}</div>
+  const renderStats = () => {
+    // 表示するデータを決定（フィルタリングされた結果があればそれを使用）
+    const displayStats = currentStatistics || statistics;
+    
+    return (
+      <div className={`grid ${isCompact ? 'grid-cols-2' : 'grid-cols-4'} gap-2`}>
+        <div className="bg-gray-100 rounded-md p-2">
+          <div className="text-sm text-gray-600 mb-0.5">中央値</div>
+          <div className="font-bold text-gray-900 text-lg text-center">¥{displayStats.median.toLocaleString()}</div>
+        </div>
+        <div className="bg-gray-100 rounded-md p-2">
+          <div className="text-sm text-gray-600 mb-0.5">平均値</div>
+          <div className="font-bold text-gray-900 text-lg text-center">¥{Math.round(displayStats.average).toLocaleString()}</div>
+        </div>
+        <div className="bg-gray-100 rounded-md p-2">
+          <div className="text-sm text-gray-600 mb-0.5">最高値</div>
+          <div className="font-bold text-gray-900 text-lg text-center">¥{displayStats.max.toLocaleString()}</div>
+        </div>
+        <div className="bg-gray-100 rounded-md p-2">
+          <div className="text-sm text-gray-600 mb-0.5">最安値</div>
+          <div className="font-bold text-gray-900 text-lg text-center">¥{displayStats.min.toLocaleString()}</div>
+        </div>
       </div>
-      <div className="bg-gray-100 rounded-md p-2">
-        <div className="text-sm text-gray-600 mb-0.5">平均値</div>
-        <div className="font-bold text-gray-900 text-lg text-center">¥{Math.round(statistics.average).toLocaleString()}</div>
-      </div>
-      <div className="bg-gray-100 rounded-md p-2">
-        <div className="text-sm text-gray-600 mb-0.5">最高値</div>
-        <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.max.toLocaleString()}</div>
-      </div>
-      <div className="bg-gray-100 rounded-md p-2">
-        <div className="text-sm text-gray-600 mb-0.5">最安値</div>
-        <div className="font-bold text-gray-900 text-lg text-center">¥{statistics.min.toLocaleString()}</div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // サイドバー用コンパクト表示
   if (isCompact) {

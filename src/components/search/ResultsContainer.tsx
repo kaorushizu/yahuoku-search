@@ -4,6 +4,7 @@ import ResultsList from './ResultsList';
 import StatisticsPanel from '../statistics/StatisticsPanel';
 import FilterPanel from '../filter/FilterPanel';
 import LoadingIndicator from '../common/LoadingIndicator';
+import { useStatistics } from '../../hooks/useStatistics';
 
 interface ResultsContainerProps {
   results: AuctionItem[];
@@ -176,6 +177,9 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
     toggleSelectAll(sortedResults);
   }, [toggleSelectAll, sortedResults]);
 
+  // 現在表示されているアイテムの統計情報を計算
+  const currentStatistics = useStatistics(sortedResults);
+
   // 価格範囲フィルターをクリア
   const clearAllPriceRangeFilters = () => {
     setSelectedPriceRanges([]);
@@ -272,6 +276,7 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
           {results.length > 0 && statistics && (
             <StatisticsPanel
               statistics={statistics}
+              currentStatistics={currentStatistics}
               isCompact={true}
               isVisible={isStatsVisible}
               onToggleVisibility={() => setIsStatsVisible(!isStatsVisible)}
@@ -330,7 +335,8 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
             {/* 統計情報パネル (デスクトップ) */}
             {statistics && (
               <StatisticsPanel 
-                statistics={statistics} 
+                statistics={statistics}
+                currentStatistics={currentStatistics}
                 onPriceRangeClick={handlePriceRangeClick}
                 selectedPriceRanges={selectedPriceRanges}
                 hasActiveFilters={hasAnyFilter()}
