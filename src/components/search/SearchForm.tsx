@@ -26,8 +26,30 @@ const SearchForm: React.FC<SearchFormProps> = ({
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
 
-  // 検索ボックス外のクリックを監視する効果を親コンポーネントで処理する必要があります
+  // 検索ボックス外のクリックを監視
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // 検索ボックスやコンテナ外のクリックの場合、検索履歴を非表示にする
+      if (
+        isHistoryVisible &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(event.target as Node) &&
+        historyRef.current &&
+        !historyRef.current.contains(event.target as Node)
+      ) {
+        setIsHistoryVisible(false);
+      }
+    };
+
+    // イベントリスナーを追加
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      // クリーンアップ
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isHistoryVisible]);
 
   // ヘッダーバージョンと通常バージョンで異なるスタイルを適用
   if (isHeader) {
@@ -101,7 +123,10 @@ const SearchForm: React.FC<SearchFormProps> = ({
         
         {/* 検索履歴の表示 */}
         {isHistoryVisible && searchHistory.length > 0 && (
-          <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+          <div 
+            ref={historyRef}
+            className="absolute z-50 left-1/2 transform -translate-x-1/2 w-11/12 max-w-md mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+          >
             {searchHistory.map((term, index) => (
               <button
                 key={index}
@@ -184,7 +209,10 @@ const SearchForm: React.FC<SearchFormProps> = ({
       </div>
       {/* 検索履歴の表示 */}
       {isHistoryVisible && searchHistory.length > 0 && (
-        <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+        <div 
+          ref={historyRef}
+          className="absolute z-50 left-1/2 transform -translate-x-1/2 w-11/12 max-w-md mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+        >
           {searchHistory.map((term, index) => (
             <button
               key={index}
