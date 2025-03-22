@@ -37,6 +37,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   const [showZoom, setShowZoom] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomThumbsSwiper, setZoomThumbsSwiper] = useState<SwiperType | null>(null);
+  const [zoomSwiper, setZoomSwiper] = useState<SwiperType | null>(null);
 
   // ドロワーが閉じられたらリセット
   useEffect(() => {
@@ -45,6 +46,45 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
       setActiveIndex(0);
     }
   }, [isOpen]);
+
+  // ショートカットキーの設定
+  useEffect(() => {
+    if (!showZoom) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!zoomSwiper) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'a':
+        case 'arrowleft':
+          zoomSwiper.slidePrev();
+          break;
+        case 's':
+        case 'arrowright':
+          zoomSwiper.slideNext();
+          break;
+        case 'w':
+        case 'arrowdown':
+          closeZoomView();
+          break;
+        case ' ':
+          // スペースキーで拡大/縮小を切り替え
+          // 拡大中は縮小に、縮小中は拡大に切り替わる
+          if (zoomSwiper) {
+            const zoom = zoomSwiper.zoom;
+            if (zoom.scale > 1) {
+              zoom.out();
+            } else {
+              zoom.in();
+            }
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showZoom, zoomSwiper]);
 
   if (!isOpen || (!product && !productDetail)) return null;
 
@@ -444,6 +484,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                 loop={images.length > 1}
                 thumbs={{ swiper: zoomThumbsSwiper && !zoomThumbsSwiper.destroyed ? zoomThumbsSwiper : null }}
                 onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
+                onSwiper={setZoomSwiper}
                 className="w-full max-h-[calc(100vh-150px)]"
               >
                 {images.map((src, index) => (
