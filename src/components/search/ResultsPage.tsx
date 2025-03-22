@@ -144,34 +144,9 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
 
   // 無限スクロール用のIntersectionObserver
   useEffect(() => {
-    if (!observerTarget.current) return;
-
-    // フィルターが適用されているかチェック
-    const hasFilters = showSelectedOnly || 
-      selectedTags.size > 0 || 
-      filterOptions.filterKeywords.length > 0 || 
-      filterOptions.excludeKeywords.length > 0 || 
-      filterOptions.excludeJunk || 
-      filterOptions.excludeMultipleBids || 
-      filterOptions.excludeNew || 
-      filterOptions.excludeSets || 
-      filterOptions.excludeFreeShipping;
-    
-    // フィルターが適用されている場合は無限スクロールを実行しない
-    if (hasFilters) return;
-
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) {
-          loadMore();
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    observer.observe(observerTarget.current);
-    return () => observer.disconnect();
-  }, [loadMore, showSelectedOnly, selectedTags, filterOptions]);
+    // 無限スクロール機能は無効化（ボタンクリックで次のページを読み込む仕様に変更）
+    // 以前のIntersectionObserver実装を削除
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">

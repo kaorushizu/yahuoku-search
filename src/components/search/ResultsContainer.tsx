@@ -335,15 +335,16 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
             />
 
             {/* ページネーションコントロール */}
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              isLoading={isLoading}
-              isLoadingMore={isLoadingMore}
-              loadMore={loadMore}
-              hasFilters={hasAnyFilter()}
-              observerTarget={observerTarget}
-            />
+            {results.length > 0 && !isLoading && (
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                isLoading={isLoading}
+                isLoadingMore={isLoadingMore}
+                loadMore={loadMore}
+                observerTarget={observerTarget}
+              />
+            )}
           </div>
         )}
       </div>

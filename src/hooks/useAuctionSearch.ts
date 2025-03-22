@@ -154,23 +154,15 @@ export const useAuctionSearch = () => {
 
   /**
    * 次のページのデータを読み込む関数
-   * 無限スクロール機能で使用
+   * ページネーションボタンで使用
    * @param filterOptions - フィルタリングオプション
    * @param showSelectedOnly - 選択アイテムのみ表示するかどうか
    */
   const loadMore = useCallback(async (filterOptions: FilterOptions, showSelectedOnly: boolean) => {
     if (isLoading || isLoadingMore || searchParams.page >= totalPages) return;
     
-    // 選択アイテムのみ表示、または何らかのフィルターが適用されている場合は
-    // 無限スクロールによる自動ロードは行わない（ボタンクリックでのみロード）
-    const hasFilters = showSelectedOnly || 
-      filterOptions.filterKeywords.length > 0 || 
-      filterOptions.excludeKeywords.length > 0 || 
-      filterOptions.excludeJunk || 
-      filterOptions.excludeMultipleBids || 
-      filterOptions.excludeNew || 
-      filterOptions.excludeSets || 
-      filterOptions.excludeFreeShipping;
+    // 無限スクロールによる自動ロード機能を停止
+    // フィルターの状態に関わらず、ボタンクリックでのみ次のページを読み込む
     
     setIsLoadingMore(true);
     const nextPage = searchParams.page + 1;
