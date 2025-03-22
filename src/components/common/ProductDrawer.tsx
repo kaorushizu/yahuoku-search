@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, ExternalLink, Package2, Calendar, Tag, BarChart4, ShoppingBag, Clock, Info, ZoomIn, ZoomOut, Image } from 'lucide-react';
 import { AuctionItem, ProductTag, ProductDetailResponse } from '../../types';
 
@@ -39,6 +39,9 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   const [zoomThumbsSwiper, setZoomThumbsSwiper] = useState<SwiperType | null>(null);
   const [zoomSwiper, setZoomSwiper] = useState<SwiperType | null>(null);
   const [mainSwiper, setMainSwiper] = useState<SwiperType | null>(null);
+  const [drawerWidth, setDrawerWidth] = useState(800);
+  const [isDragging, setIsDragging] = useState(false);
+  const resizerRef = useRef<HTMLDivElement>(null);
 
   // ドロワーが閉じられたらリセット
   useEffect(() => {
@@ -47,6 +50,48 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
       setActiveIndex(0);
     }
   }, [isOpen]);
+
+  // ドラッグによるサイズ調整機能
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      setIsDragging(true);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      // 画面の右端からマウス位置を引いて幅を計算
+      const newWidth = window.innerWidth - e.clientX;
+      
+      // 幅の最小値と最大値を制限
+      const limitedWidth = Math.min(Math.max(newWidth, 400), window.innerWidth * 0.9);
+      setDrawerWidth(limitedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    // イベントリスナーの登録
+    const resizer = resizerRef.current;
+    if (resizer) {
+      resizer.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    // クリーンアップ関数
+    return () => {
+      if (resizer) {
+        resizer.removeEventListener('mousedown', handleMouseDown);
+      }
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isOpen, isDragging]);
 
   // ショートカットキーの設定
   useEffect(() => {
@@ -146,15 +191,30 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
     <>
       {/* オーバーレイ */}
       <div 
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-black/50 z-50"
         onClick={onClose}
       />
       
+      {/* リサイザー */}
+      <div
+        ref={resizerRef}
+        className="fixed left-0 top-0 bottom-0 w-4 bg-gray-200 hover:bg-gray-300 cursor-ew-resize z-[51] transition-opacity flex items-center justify-center"
+        style={{ 
+          left: `calc(100% - ${drawerWidth}px - 4px)`,
+          display: isOpen ? 'block' : 'none'
+        }}
+      >
+        <div className="h-full flex items-center justify-center">
+          <div className="w-0.5 h-16 bg-gray-400 rounded-full"></div>
+        </div>
+      </div>
+
       {/* ドロワー */}
       <div 
-        className={`fixed right-0 top-0 h-full w-full max-w-[800px] bg-white shadow-lg z-50 overflow-y-auto transition-transform duration-300 transform ${
+        className={`fixed right-0 top-0 h-full bg-white shadow-lg z-50 overflow-y-auto transition-transform duration-300 transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        } ${isDragging ? 'transition-none' : ''}`}
+        style={{ width: `${drawerWidth}px` }}
       >
         {isLoading ? (
           // ローディング表示
