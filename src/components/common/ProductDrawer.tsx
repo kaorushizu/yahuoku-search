@@ -310,7 +310,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                     </div>
                   </div>
                 ) : images.length > 0 ? (
-                  <div className="relative h-[400px]">
+                  <div className="relative h-[450px]">
                     {/* メインスライダー */}
                     <Swiper
                       modules={[Navigation, Pagination]}
@@ -350,7 +350,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                     </Swiper>
                   </div>
                 ) : (
-                  <div className="h-[400px] flex items-center justify-center text-gray-400">
+                  <div className="h-[450px] flex items-center justify-center text-gray-400">
                     画像はありません
                   </div>
                 )}
