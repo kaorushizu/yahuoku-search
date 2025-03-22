@@ -539,7 +539,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
               
               {/* 商品説明（API情報） - フレームなしでシンプルに表示 */}
               {productDetail?.description && (
-                <div>
+                <div className="mt-6 pt-4 border-t border-gray-200">
                   <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                     <FileText size={16} />
                     商品説明
