@@ -38,6 +38,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomThumbsSwiper, setZoomThumbsSwiper] = useState<SwiperType | null>(null);
   const [zoomSwiper, setZoomSwiper] = useState<SwiperType | null>(null);
+  const [mainSwiper, setMainSwiper] = useState<SwiperType | null>(null);
 
   // ドロワーが閉じられたらリセット
   useEffect(() => {
@@ -49,42 +50,56 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
 
   // ショートカットキーの設定
   useEffect(() => {
-    if (!showZoom) return;
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!zoomSwiper) return;
-
-      switch (e.key.toLowerCase()) {
-        case 'a':
-        case 'arrowleft':
-          zoomSwiper.slidePrev();
-          break;
-        case 's':
-        case 'arrowright':
-          zoomSwiper.slideNext();
-          break;
-        case 'w':
-        case 'arrowdown':
-          closeZoomView();
-          break;
-        case ' ':
-          // スペースキーで拡大/縮小を切り替え
-          // 拡大中は縮小に、縮小中は拡大に切り替わる
-          if (zoomSwiper) {
-            const zoom = zoomSwiper.zoom;
-            if (zoom.scale > 1) {
-              zoom.out();
-            } else {
-              zoom.in();
+      // 拡大モードの場合
+      if (showZoom && zoomSwiper) {
+        switch (e.key.toLowerCase()) {
+          case 'a':
+          case 'arrowleft':
+            zoomSwiper.slidePrev();
+            break;
+          case 's':
+          case 'arrowright':
+            zoomSwiper.slideNext();
+            break;
+          case 'w':
+          case 'arrowdown':
+            closeZoomView();
+            break;
+          case ' ':
+            // スペースキーで拡大/縮小を切り替え
+            const zoomContainer = document.querySelector('.swiper-zoom-container');
+            if (zoomContainer) {
+              const isZoomed = zoomContainer.classList.contains('zoomed');
+              if (isZoomed) {
+                zoomSwiper.zoom.out();
+              } else {
+                zoomSwiper.zoom.in();
+              }
             }
-          }
-          break;
+            break;
+        }
+      } 
+      // 通常モードの場合
+      else if (mainSwiper) {
+        switch (e.key.toLowerCase()) {
+          case 'a':
+          case 'arrowleft':
+            mainSwiper.slidePrev();
+            break;
+          case 's':
+          case 'arrowright':
+            mainSwiper.slideNext();
+            break;
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showZoom, zoomSwiper]);
+  }, [isOpen, showZoom, zoomSwiper, mainSwiper]);
 
   if (!isOpen || (!product && !productDetail)) return null;
 
@@ -210,6 +225,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                       navigation
                       pagination={{ clickable: true, dynamicBullets: true }}
                       onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
+                      onSwiper={setMainSwiper}
                       loop={images.length > 1}
                       className="h-full rounded-lg"
                     >
