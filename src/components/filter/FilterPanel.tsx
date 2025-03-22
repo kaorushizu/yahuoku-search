@@ -191,7 +191,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
             )}
           </span>
         </div>
-        {/* フィルタークリアボタン */}
         <div className="flex items-center gap-1.5">
           {hasFilters && (
             <button
@@ -410,6 +409,19 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               </Tooltip>
             </div>
           </div>
+
+          {/* クリアボタン */}
+          {hasFilters && (
+            <div className="pt-4 border-t">
+              <button
+                onClick={resetAllFilters}
+                className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200"
+              >
+                <X size={16} />
+                絞り込みをリセット
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
