@@ -244,10 +244,26 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
 
       {/* ドロワー */}
       <div 
-        className={`fixed right-0 top-0 h-full bg-white shadow-lg z-50 overflow-y-auto transition-transform duration-300 transform ${
+        className={`fixed right-0 top-0 h-full bg-white shadow-lg z-50 overflow-y-auto overscroll-contain transition-transform duration-300 transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         } ${isDragging ? 'transition-none' : ''}`}
         style={{ width: `${drawerWidth}px` }}
+        onWheel={(e) => {
+          // スクロールがドロワーの最上部または最下部に達した場合でも
+          // 親要素へのスクロール伝播を防止
+          e.stopPropagation();
+          
+          // ドロワー内の要素
+          const drawer = e.currentTarget;
+          
+          // 最上部でのスクロールアップまたは最下部でのスクロールダウンを防止
+          if (
+            (drawer.scrollTop === 0 && e.deltaY < 0) || 
+            (drawer.scrollHeight - drawer.scrollTop === drawer.clientHeight && e.deltaY > 0)
+          ) {
+            e.preventDefault();
+          }
+        }}
       >
         {isLoading ? (
           // ローディング表示
@@ -266,7 +282,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
         ) : (
           // 商品情報 - 配置順序を変更
           <div className="flex flex-col h-full">
-            <div className="flex-grow overflow-y-auto pl-6 pr-4 py-4 space-y-4">
+            <div className="flex-grow overflow-y-auto overscroll-contain pl-6 pr-4 py-4 space-y-4">
               {/* Swiperスライダー */}
               <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden">
                 {isAucfree ? (
@@ -589,9 +605,9 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
           />
           
           {/* コンテンツコンテナ */}
-          <div className="fixed inset-0 z-[61] flex flex-col pointer-events-none">
+          <div className="fixed inset-0 z-[61] flex flex-col pointer-events-none overscroll-contain">
             {/* スライダー部分 */}
-            <div className="relative flex-1 flex items-center justify-center pointer-events-auto">
+            <div className="relative flex-1 flex items-center justify-center pointer-events-auto overscroll-contain">
               {/* 閉じるボタン */}
               <button
                 className="absolute right-4 top-4 z-[70] bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors duration-200"
