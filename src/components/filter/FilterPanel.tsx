@@ -368,7 +368,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                       : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                   }`}
                 >
-                  ジャンク品
+                  ジャンク
                 </div>
               </Tooltip>
               <Tooltip text="「まとめ」「セット」を除外">
@@ -380,7 +380,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                       : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                   }`}
                 >
-                  セット商品
+                  まとめ
                 </div>
               </Tooltip>
               <Tooltip text="「新品」「未使用」「未開封」を除外">
