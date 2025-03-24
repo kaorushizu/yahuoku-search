@@ -81,19 +81,25 @@ function App() {
 
   // URLからクエリパラメータを取得して検索を実行する
   useEffect(() => {
+    // 検索中や結果読み込み中は処理をスキップ
+    if (isLoading) return;
+
     // URLからクエリパラメータを解析
     const searchParams = new URLSearchParams(location.search);
     const keyword = searchParams.get('keyword');
     
     // クエリパラメータにキーワードがあり、現在の検索キーワードと異なる場合は検索を実行
     if (keyword && keyword !== currentSearchKeyword) {
+      // URL変更によるフラグを立てる
+      const isFromUrlChange = true;
+      
       setSearchParams(prev => ({ ...prev, keyword }));
       
       // フォームイベントをシミュレートして検索実行
       const event = new Event('submit') as unknown as React.FormEvent;
       originalHandleSearch(event);
     }
-  }, [location.search, currentSearchKeyword, setSearchParams, originalHandleSearch]);
+  }, [location.search, currentSearchKeyword, setSearchParams, originalHandleSearch, isLoading]);
 
   // コンテキスト間の連携を行うloadMore関数
   const loadMore = useCallback(() => {
@@ -114,11 +120,15 @@ function App() {
     // 検索を実行
     originalHandleSearch(e, newPage, resetFunc, clearFunc, sortFunc);
     
-    // URLを検索クエリで更新
-    if (searchParams.keyword) {
+    // 現在のURLのパスを取得
+    const currentPath = location.pathname;
+    const currentSearch = new URLSearchParams(location.search).get('keyword');
+    
+    // URLを検索クエリで更新（既に同じキーワードのURLにいる場合は更新しない）
+    if (searchParams.keyword && (currentPath !== '/search' || currentSearch !== searchParams.keyword)) {
       navigate(`/search?keyword=${encodeURIComponent(searchParams.keyword)}`);
     }
-  }, [originalHandleSearch, searchParams.keyword, navigate, setSearchParams]);
+  }, [originalHandleSearch, searchParams.keyword, navigate, setSearchParams, location]);
 
   // Ctrl+Sで検索ボックスにフォーカスするショートカット
   useEffect(() => {

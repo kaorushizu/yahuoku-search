@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import SearchForm from './SearchForm';
 import AdvancedSearchPanel from './AdvancedSearchPanel';
@@ -33,6 +33,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
   handleSearch
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // 検索実行時に URL を更新する処理をラップ
   const handleSubmit = (e: React.FormEvent) => {
@@ -40,6 +41,15 @@ const SearchPage: React.FC<SearchPageProps> = ({
     
     // 検索キーワードが存在する場合、search ページに遷移
     if (searchParams.keyword) {
+      // 現在のURLパラメータを取得
+      const currentParams = new URLSearchParams(location.search);
+      const currentKeyword = currentParams.get('keyword');
+      
+      // 同じキーワードでURLが既に設定されていれば、検索を実行しない
+      if (currentKeyword === searchParams.keyword && location.pathname === '/search') {
+        return;
+      }
+      
       // handle search を呼び出す（App.tsx 側で navigate が呼ばれるようになった）
       handleSearch(e);
     }
