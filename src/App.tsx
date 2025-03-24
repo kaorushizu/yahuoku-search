@@ -65,7 +65,9 @@ function App() {
     clearSelectedItems,
     handleRangeSelection,
     toggleSelectAll,
-    selectedStatistics
+    selectedStatistics,
+    hideSelectedItems,
+    setHideSelectedItems,
   } = useSelection();
   
   // UI関連の状態
@@ -241,6 +243,8 @@ function App() {
           selectedItems={selectedItems}
           showSelectedOnly={showSelectedOnly}
           setShowSelectedOnly={setShowSelectedOnly}
+          hideSelectedItems={hideSelectedItems}
+          setHideSelectedItems={setHideSelectedItems}
           toggleItemSelection={toggleItemSelection}
           clearSelectedItems={clearSelectedItems}
           handleRangeSelection={handleRangeSelection}

@@ -7,6 +7,7 @@ import { AuctionItem } from '../types';
 export const useItemSelection = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  const [hideSelectedItems, setHideSelectedItems] = useState(false);
 
   /**
    * 商品の選択状態を切り替える関数
@@ -31,6 +32,9 @@ export const useItemSelection = () => {
     setSelectedItems(new Set());
     if (showSelectedOnly) {
       setShowSelectedOnly(false);
+    }
+    if (hideSelectedItems) {
+      setHideSelectedItems(false);
     }
   };
 
@@ -82,6 +86,8 @@ export const useItemSelection = () => {
     toggleItemSelection,
     clearSelectedItems,
     handleRangeSelection,
-    toggleSelectAll
+    toggleSelectAll,
+    hideSelectedItems,
+    setHideSelectedItems,
   };
 }; 

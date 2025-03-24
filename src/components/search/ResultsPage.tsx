@@ -61,6 +61,8 @@ interface ResultsPageProps {
   selectedItems: Set<string>;
   showSelectedOnly: boolean;
   setShowSelectedOnly: React.Dispatch<React.SetStateAction<boolean>>;
+  hideSelectedItems: boolean;
+  setHideSelectedItems: React.Dispatch<React.SetStateAction<boolean>>;
   toggleItemSelection: (id: string) => void;
   clearSelectedItems: () => void;
   handleRangeSelection: (id: string, items: AuctionItem[], isTable: boolean) => void;
@@ -125,6 +127,8 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
   selectedItems,
   showSelectedOnly,
   setShowSelectedOnly,
+  hideSelectedItems,
+  setHideSelectedItems,
   toggleItemSelection,
   clearSelectedItems,
   handleRangeSelection,
@@ -231,6 +235,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
               loadMore={loadMore}
               isLoadingMore={isLoadingMore}
               showSelectedOnly={showSelectedOnly}
+              hideSelectedItems={hideSelectedItems}
               hasPriceRangeFilter={hasPriceRangeFilter}
               currentPage={searchParams.page}
               totalPages={totalPages}
@@ -245,13 +250,15 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
       <ScrollToTopButton />
 
       {/* 選択商品の統計情報パネル */}
-      {selectedItems.size > 0 && selectedStatistics && (
+      {selectedItems.size > 0 && (
         <SelectedItemsPanel
           selectedStatistics={selectedStatistics}
           selectedItemsCount={selectedItems.size}
+          clearSelectedItems={clearSelectedItems}
           showSelectedOnly={showSelectedOnly}
           setShowSelectedOnly={setShowSelectedOnly}
-          clearSelectedItems={clearSelectedItems}
+          hideSelectedItems={hideSelectedItems}
+          setHideSelectedItems={setHideSelectedItems}
         />
       )}
 

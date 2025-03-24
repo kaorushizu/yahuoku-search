@@ -11,6 +11,8 @@ interface SelectionContextType {
   setSelectedItems: React.Dispatch<React.SetStateAction<Set<string>>>;
   showSelectedOnly: boolean;
   setShowSelectedOnly: React.Dispatch<React.SetStateAction<boolean>>;
+  hideSelectedItems: boolean;
+  setHideSelectedItems: React.Dispatch<React.SetStateAction<boolean>>;
   
   // 選択機能
   toggleItemSelection: (id: string) => void;
@@ -51,6 +53,8 @@ export const SelectionProvider: React.FC<SelectionProviderProps> = ({ children }
     setSelectedItems: itemSelection.setSelectedItems,
     showSelectedOnly: itemSelection.showSelectedOnly,
     setShowSelectedOnly: itemSelection.setShowSelectedOnly,
+    hideSelectedItems: itemSelection.hideSelectedItems,
+    setHideSelectedItems: itemSelection.setHideSelectedItems,
     toggleItemSelection: itemSelection.toggleItemSelection,
     clearSelectedItems: itemSelection.clearSelectedItems,
     handleRangeSelection: itemSelection.handleRangeSelection,

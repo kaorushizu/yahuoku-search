@@ -51,6 +51,7 @@ interface ResultsContainerProps {
   loadMore: () => void;
   isLoadingMore: boolean;
   showSelectedOnly: boolean;
+  hideSelectedItems: boolean;
   hasPriceRangeFilter: boolean;
   currentPage: number;
   totalPages: number;
@@ -107,6 +108,7 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
   loadMore,
   isLoadingMore,
   showSelectedOnly,
+  hideSelectedItems,
   hasPriceRangeFilter,
   currentPage,
   totalPages,
@@ -167,18 +169,26 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
   
   // ソート処理を追加
   const sortedResults = useMemo(() => {
-    if (sortOrder === 'none') {
-      return priceFilteredResults;
+    // 選択した商品のみ表示/非表示する場合のフィルタリング
+    let filteredBySelection = priceFilteredResults;
+    if (showSelectedOnly) {
+      filteredBySelection = priceFilteredResults.filter(item => selectedItems.has(item.オークションID));
+    } else if (hideSelectedItems) {
+      filteredBySelection = priceFilteredResults.filter(item => !selectedItems.has(item.オークションID));
     }
     
-    return [...priceFilteredResults].sort((a, b) => {
+    if (sortOrder === 'none') {
+      return filteredBySelection;
+    }
+    
+    return [...filteredBySelection].sort((a, b) => {
       if (sortOrder === 'asc') {
         return a.落札金額 - b.落札金額;
       } else {
         return b.落札金額 - a.落札金額;
       }
     });
-  }, [priceFilteredResults, sortOrder]);
+  }, [priceFilteredResults, sortOrder, showSelectedOnly, hideSelectedItems, selectedItems]);
 
   // 現在表示されている結果に対して全選択を処理する関数
   const handleToggleSelectAll = useCallback(() => {
@@ -216,12 +226,14 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
            filterOptions.excludeNew || 
            filterOptions.excludeSets || 
            filterOptions.excludeFreeShipping ||
-           showSelectedOnly;
+           showSelectedOnly ||
+           hideSelectedItems;
   }, [
     selectedPriceRanges.length,
     selectedTags.size,
     filterOptions,
-    showSelectedOnly
+    showSelectedOnly,
+    hideSelectedItems
   ]);
 
   // ソートをリセットする関数
