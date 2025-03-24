@@ -115,7 +115,7 @@ const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
       <div className={`grid ${isCompact ? 'grid-cols-2' : 'grid-cols-4'} gap-2`}>
         <div className="bg-gray-100 rounded-md p-2">
           <div className="text-sm text-gray-600 mb-0.5">中央値</div>
-          <div className="font-bold text-gray-900 text-lg text-center">¥{displayStats.median.toLocaleString()}</div>
+          <div className="font-bold text-gray-900 text-lg text-center">¥{Math.round(displayStats.median).toLocaleString()}</div>
         </div>
         <div className="bg-gray-100 rounded-md p-2">
           <div className="text-sm text-gray-600 mb-0.5">平均値</div>

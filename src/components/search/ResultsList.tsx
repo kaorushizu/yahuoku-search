@@ -17,7 +17,13 @@ interface ResultsListProps {
   getAuctionUrl: (id: string, endDate: string) => string;
   setLayout: React.Dispatch<React.SetStateAction<'grid' | 'table'>>;
   toggleSelectAll: () => void;
+  statistics: {
+    medianPrice: number;
+  } | null;
 }
+
+// No Image画像のURLを定数として定義
+const NO_IMAGE_URL = 'https://placehold.jp/bdbdc2/ffffff/400x400.png?text=No%20Image';
 
 /**
  * 検索結果リストコンポーネント
@@ -34,7 +40,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
   getProductTags,
   getAuctionUrl,
   setLayout,
-  toggleSelectAll
+  toggleSelectAll,
+  statistics
 }) => {
   const [tooltipContent, setTooltipContent] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -149,11 +156,11 @@ const ResultsList: React.FC<ResultsListProps> = ({
                 onClick={(e) => handleProductClick(item, e)}
               >
                 <img
-                  src={item.画像URL || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
+                  src={item.画像URL || NO_IMAGE_URL}
                   alt={item.商品名 || 'タイトルなし'}
                   className="absolute inset-0 w-full h-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
+                    (e.target as HTMLImageElement).src = NO_IMAGE_URL;
                   }}
                 />
                 {/* 商品タグ表示 */}
@@ -257,12 +264,12 @@ const ResultsList: React.FC<ResultsListProps> = ({
                             className="cursor-pointer"
                           >
                             <ImageMagnifier 
-                              src={item.画像URL || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
+                              src={item.画像URL || NO_IMAGE_URL}
                               alt={item.商品名 || 'タイトルなし'}
                               width="94px"
                               height="94px"
                               className="w-[94px] h-[94px] object-cover bg-white rounded border hover:ring-2 hover:ring-blue-500"
-                              fallbackSrc="https://images.unsplash.com/photo-1523275335684-37898b6baf30"
+                              fallbackSrc={NO_IMAGE_URL}
                             />
                           </div>
                         </div>
@@ -339,6 +346,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
         error={error}
         getProductTags={getProductTags}
         getAuctionUrl={getAuctionUrl}
+        statistics={statistics}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ExternalLink, Package2, Calendar, Tag, BarChart4, ShoppingBag, Clock, Info, ZoomIn, ZoomOut, Image, DollarSign, PlusCircle, Users, Eye, Percent, FileText, Folder, Flag, Award } from 'lucide-react';
+import { X, ExternalLink, Package2, Calendar, Tag, BarChart4, ShoppingBag, Clock, Info, ZoomIn, ZoomOut, Image, DollarSign, PlusCircle, Users, Eye, Percent, FileText, Folder, Flag, Award, TrendingDown, TrendingUp, ArrowRight } from 'lucide-react';
 import { AuctionItem, ProductTag, ProductDetailResponse } from '../../types';
 
 // Swiperのインポート
@@ -13,6 +13,9 @@ import 'swiper/css/zoom';
 import 'swiper/css/free-mode';
 import 'swiper/css/thumbs';
 
+// No Image画像のURLを定数として定義
+const NO_IMAGE_URL = 'https://placehold.jp/bdbdc2/ffffff/400x400.png?text=No%20Image';
+
 interface ProductDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +25,9 @@ interface ProductDrawerProps {
   error: string | null;
   getProductTags: (title: string) => ProductTag[];
   getAuctionUrl: (id: string, endDate: string) => string;
+  statistics: {
+    medianPrice: number;
+  } | null;
 }
 
 const ProductDrawer: React.FC<ProductDrawerProps> = ({
@@ -32,7 +38,8 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   isLoading,
   error,
   getProductTags,
-  getAuctionUrl
+  getAuctionUrl,
+  statistics
 }) => {
   const [showZoom, setShowZoom] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -41,7 +48,8 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   const [mainSwiper, setMainSwiper] = useState<SwiperType | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(800);
   const [isDragging, setIsDragging] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
+  const [copiedCategoryId, setCopiedCategoryId] = useState(false);
+  const [copiedAuctionId, setCopiedAuctionId] = useState(false);
   const resizerRef = useRef<HTMLDivElement>(null);
 
   // ドロワーが閉じられたらリセット
@@ -49,6 +57,8 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
     if (!isOpen) {
       setShowZoom(false);
       setActiveIndex(0);
+      setCopiedCategoryId(false);
+      setCopiedAuctionId(false);
     }
   }, [isOpen]);
 
@@ -148,12 +158,19 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   }, [isOpen, showZoom, zoomSwiper, mainSwiper]);
 
   // クリップボードにコピーする関数
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, type: 'category' | 'auction') => {
     navigator.clipboard.writeText(text).then(() => {
-      setIsCopied(true);
-      setTimeout(() => {
-        setIsCopied(false);
-      }, 1000);
+      if (type === 'category') {
+        setCopiedCategoryId(true);
+        setTimeout(() => {
+          setCopiedCategoryId(false);
+        }, 1000);
+      } else {
+        setCopiedAuctionId(true);
+        setTimeout(() => {
+          setCopiedAuctionId(false);
+        }, 1000);
+      }
     }).catch(err => {
       console.error('クリップボードへのコピーに失敗しました', err);
     });
@@ -252,6 +269,10 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
             e.preventDefault();
           }
         }}
+        onTouchStart={(e) => {
+          // タッチイベントのデフォルト動作を許可
+          e.stopPropagation();
+        }}
       >
         {isLoading ? (
           // ローディング表示
@@ -293,11 +314,11 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                             onClick={openZoomView}
                           >
                             <img
-                              src={src || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
+                              src={src || NO_IMAGE_URL}
                               alt={`${title || 'タイトルなし'} - 画像 ${index + 1}`}
                               className="max-w-full max-h-full object-contain"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
+                                (e.target as HTMLImageElement).src = NO_IMAGE_URL;
                               }}
                             />
                           </div>
@@ -352,10 +373,10 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                         {productDetail.categories.length > 1 && (
                           <span 
                             className="text-gray-500 cursor-pointer hover:text-blue-500 relative"
-                            onClick={() => copyToClipboard(productDetail.categories[productDetail.categories.length - 1].id.toString())}
+                            onClick={() => copyToClipboard(productDetail.categories[productDetail.categories.length - 1].id.toString(), 'category')}
                           >
                             {' '}({productDetail.categories[productDetail.categories.length - 1].id})
-                            {isCopied && (
+                            {copiedCategoryId && (
                               <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
                                 コピーしました
                               </span>
@@ -455,6 +476,27 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                             </tr>
                           )}
                           
+                          {/* オークションID */}
+                          <tr className="border-b border-gray-200 last:border-0">
+                            <td className="py-1 text-gray-600 flex items-center gap-1">
+                              <Tag size={14} />
+                              オークションID
+                            </td>
+                            <td className="py-1 text-right relative">
+                              <span 
+                                className="font-medium text-gray-900 cursor-pointer hover:text-blue-500"
+                                onClick={() => copyToClipboard(auctionId, 'auction')}
+                              >
+                                {auctionId}
+                                {copiedAuctionId && (
+                                  <span className="absolute -top-8 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
+                                    コピーしました
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                          </tr>
+                          
                           <tr className="last:border-0">
                             <td className="py-1 text-gray-600 flex items-center gap-1">
                               <Calendar size={14} />
@@ -479,19 +521,99 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                           <tr className="border-b border-gray-200">
                             <td className="py-1 text-gray-600 flex items-center gap-1">
                               <DollarSign size={14} />
-                              平均落札価格
+                              中央値
                             </td>
-                            <td className="py-1 text-right font-medium text-gray-900">¥12,800</td>
+                            <td className="px-4 py-2 text-right text-sm text-gray-600">
+                              {statistics ? `¥${Math.round(statistics.medianPrice).toLocaleString()}` : '---'}
+                            </td>
                           </tr>
                           <tr>
-                            <td className="py-1 text-gray-600 flex items-center gap-1">
-                              <Percent size={14} />
-                              相場比較
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Percent size={14} />
+                                相場比較
+                              </div>
                             </td>
-                            <td className="py-1 text-right">
-                              <span className={`font-medium ${price > 12800 ? 'text-red-600' : 'text-green-600'}`}>
-                                {price > 12800 ? '高め' : '平均以下'}
-                              </span>
+                            <td className="px-4 py-2 text-right text-sm text-gray-600">
+                              {statistics ? (
+                                <div className="flex flex-col items-end gap-2">
+                                  {(() => {
+                                    const priceDiff = price - statistics.medianPrice;
+                                    const diffPercent = Math.round(Math.abs(priceDiff) / statistics.medianPrice * 100);
+                                    let message;
+                                    let colorClass;
+                                    let icon;
+                                    let barWidth;
+
+                                    if (diffPercent <= 10) {
+                                      message = '中央値と同程度';
+                                      colorClass = 'text-gray-600 bg-gray-100';
+                                      icon = <ArrowRight className="w-4 h-4" />;
+                                      barWidth = '10%';
+                                    } else if (priceDiff > 0) {
+                                      if (diffPercent > 50) {
+                                        message = '中央値よりかなり高い';
+                                        colorClass = 'text-red-700 bg-red-100';
+                                        icon = <TrendingUp className="w-4 h-4" />;
+                                        barWidth = '100%';
+                                      } else if (diffPercent > 30) {
+                                        message = '中央値より高い';
+                                        colorClass = 'text-red-600 bg-red-50';
+                                        icon = <TrendingUp className="w-4 h-4" />;
+                                        barWidth = '60%';
+                                      } else {
+                                        message = '中央値よりやや高い';
+                                        colorClass = 'text-red-400 bg-red-50';
+                                        icon = <TrendingUp className="w-4 h-4" />;
+                                        barWidth = '30%';
+                                      }
+                                    } else {
+                                      if (diffPercent > 50) {
+                                        message = '中央値よりかなり低い';
+                                        colorClass = 'text-green-700 bg-green-100';
+                                        icon = <TrendingDown className="w-4 h-4" />;
+                                        barWidth = '100%';
+                                      } else if (diffPercent > 30) {
+                                        message = '中央値より低い';
+                                        colorClass = 'text-green-600 bg-green-50';
+                                        icon = <TrendingDown className="w-4 h-4" />;
+                                        barWidth = '60%';
+                                      } else {
+                                        message = '中央値よりやや低い';
+                                        colorClass = 'text-green-400 bg-green-50';
+                                        icon = <TrendingDown className="w-4 h-4" />;
+                                        barWidth = '30%';
+                                      }
+                                    }
+
+                                    const baseColorClass = colorClass.split(' ')[0];
+                                    const bgColorClass = colorClass.split(' ')[1];
+
+                                    return (
+                                      <>
+                                        <div className={`flex items-center gap-1 px-2 py-1 rounded ${colorClass}`}>
+                                          {icon}
+                                          <span className="font-medium">
+                                            {message}
+                                          </span>
+                                        </div>
+                                        <div className="w-full flex flex-col gap-1">
+                                          <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                                            <div 
+                                              className={`absolute top-0 ${priceDiff > 0 ? 'right-0' : 'left-0'} h-full ${bgColorClass} rounded-full transition-all duration-300`}
+                                              style={{ width: barWidth }}
+                                            />
+                                          </div>
+                                          <div className="text-xs text-gray-500 text-right">
+                                            {Math.round(Math.abs(priceDiff)).toLocaleString()}円
+                                            <span className="ml-1">({diffPercent}%) {priceDiff > 0 ? '高い' : '低い'}</span>
+                                          </div>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              ) : '---'}
                             </td>
                           </tr>
                         </tbody>
@@ -595,11 +717,11 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                   <SwiperSlide key={index} className="flex items-center justify-center h-[calc(100vh-150px)]">
                     <div className="swiper-zoom-container w-full h-full flex items-center justify-center">
                       <img
-                        src={src || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
+                        src={src || NO_IMAGE_URL}
                         alt={`${title || 'タイトルなし'} - 拡大画像 ${index + 1}`}
                         className="max-w-full max-h-[calc(100vh-180px)] object-contain"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
+                          (e.target as HTMLImageElement).src = NO_IMAGE_URL;
                         }}
                       />
                     </div>
@@ -626,11 +748,11 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                       <SwiperSlide key={index} style={{ width: '80px', height: '60px' }}>
                         <div className={`h-full p-1 cursor-pointer border-2 rounded ${activeIndex === index ? 'border-blue-500' : 'border-transparent'}`}>
                           <img
-                            src={src || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'}
+                            src={src || NO_IMAGE_URL}
                             alt={`サムネイル ${index + 1}`}
                             className="w-full h-full object-cover rounded"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
+                              (e.target as HTMLImageElement).src = NO_IMAGE_URL;
                             }}
                           />
                         </div>

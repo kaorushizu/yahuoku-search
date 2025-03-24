@@ -346,6 +346,9 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
               getAuctionUrl={getAuctionUrl}
               setLayout={setLayout}
               toggleSelectAll={handleToggleSelectAll}
+              statistics={{
+                medianPrice: statistics.median
+              }}
             />
 
             {/* ページネーションコントロール */}
