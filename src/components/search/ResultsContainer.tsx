@@ -55,6 +55,7 @@ interface ResultsContainerProps {
   currentPage: number;
   totalPages: number;
   observerTarget?: React.RefObject<HTMLDivElement>;
+  onResetSortOrderChange?: (resetFunc: () => void) => void;
 }
 
 interface PriceRange {
@@ -109,7 +110,8 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
   hasPriceRangeFilter,
   currentPage,
   totalPages,
-  observerTarget
+  observerTarget,
+  onResetSortOrderChange
 }) => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('none');
   const [isTagsVisible, setIsTagsVisible] = useState(true);
@@ -221,6 +223,18 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
     filterOptions,
     showSelectedOnly
   ]);
+
+  // ソートをリセットする関数
+  const resetSortOrder = useCallback(() => {
+    setSortOrder('none');
+  }, []);
+  
+  // 親コンポーネントにソートリセット関数を提供
+  useEffect(() => {
+    if (onResetSortOrderChange) {
+      onResetSortOrderChange(resetSortOrder);
+    }
+  }, [onResetSortOrderChange, resetSortOrder]);
 
   // 検索中のローディング表示
   if (isLoading && results.length === 0) {

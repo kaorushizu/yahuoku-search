@@ -13,7 +13,7 @@ interface HeaderProps {
   isLoading: boolean;
   isCompanyOnly: boolean;
   setIsCompanyOnly: React.Dispatch<React.SetStateAction<boolean>>;
-  handleSearch: (e: React.FormEvent, newPage?: number) => void;
+  handleSearch: (e: React.FormEvent, newPage?: number, resetFilters?: () => void, clearSelected?: () => void, resetSort?: () => void) => void;
   
   // 詳細検索パネル
   isAdvancedSearch: boolean;

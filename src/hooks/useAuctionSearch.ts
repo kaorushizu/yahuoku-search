@@ -93,13 +93,15 @@ export const useAuctionSearch = () => {
    * @param newPage - 新しいページ番号（オプション）
    * @param resetFilters - フィルターをリセットする関数
    * @param resetSelectedItems - 選択アイテムをリセットする関数
+   * @param resetSortOrder - ソート順をリセットする関数（オプション）
    */
   const handleSearch = async (
     e: React.FormEvent,
     filterOptions: FilterOptions,
     newPage?: number,
     resetFilters?: () => void,
-    resetSelectedItems?: () => void
+    resetSelectedItems?: () => void,
+    resetSortOrder?: () => void
   ) => {
     e?.preventDefault();
     if (!searchParams.keyword.trim()) return;
@@ -115,6 +117,7 @@ export const useAuctionSearch = () => {
       setResults([]);
       setCurrentSearchKeyword(searchParams.keyword);
       resetSelectedItems?.();
+      resetSortOrder?.(); // ソート順もリセット
     }
 
     const updatedParams = {

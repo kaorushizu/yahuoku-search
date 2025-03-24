@@ -20,7 +20,7 @@ interface SearchContextType {
   setIsCompanyOnly: React.Dispatch<React.SetStateAction<boolean>>;
   
   // 機能
-  handleSearch: (e: React.FormEvent, newPage?: number, resetFunc?: () => void, clearSelectedFunc?: () => void) => void;
+  handleSearch: (e: React.FormEvent, newPage?: number, resetFunc?: () => void, clearSelectedFunc?: () => void, resetSortOrderFunc?: () => void) => void;
   loadMore: (filterOptions: FilterOptions, showSelectedOnly: boolean) => void;
   resetSearch: () => void;
   getAuctionUrl: (id: string, endDate: string) => string;
@@ -81,7 +81,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
 
   // 検索ハンドラをラップ
   const handleSearch = useCallback(
-    (e: React.FormEvent, newPage?: number, resetFilterFunc?: () => void, clearSelectedFunc?: () => void) => {
+    (e: React.FormEvent, newPage?: number, resetFilterFunc?: () => void, clearSelectedFunc?: () => void, resetSortOrderFunc?: () => void) => {
       // 新しい検索の場合（ページネーションでない場合）は価格フィルターもリセット
       if (!newPage) {
         clearPriceRangeFilters();
@@ -99,7 +99,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
         selectedTags: []
       };
       
-      originalHandleSearch(e, emptyFilterOptions, newPage, resetFilterFunc, clearSelectedFunc);
+      originalHandleSearch(e, emptyFilterOptions, newPage, resetFilterFunc, clearSelectedFunc, resetSortOrderFunc);
     },
     [originalHandleSearch, clearPriceRangeFilters]
   );

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Header from '../common/Header';
 import ResultsContainer from './ResultsContainer';
 import SelectedItemsPanel from '../statistics/SelectedItemsPanel';
@@ -22,7 +22,7 @@ interface ResultsPageProps {
   error: string | null;
   isCompanyOnly: boolean;
   setIsCompanyOnly: React.Dispatch<React.SetStateAction<boolean>>;
-  handleSearch: (e: React.FormEvent, newPage?: number) => void;
+  handleSearch: (e: React.FormEvent, newPage?: number, resetFunc?: () => void, clearFunc?: () => void, sortFunc?: () => void) => void;
   getAuctionUrl: (id: string, endDate: string) => string;
   loadMore: () => void;
   
@@ -131,6 +131,14 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
 }) => {
   // 無限スクロール用のRef
   const observerTarget = useRef<HTMLDivElement>(null);
+  
+  // ソートリセット関数
+  const [resetSortOrder, setResetSortOrder] = useState<(() => void) | null>(null);
+  
+  // ResultsContainerからソートリセット関数を受け取るハンドラ
+  const handleResetSortOrderChange = useCallback((resetFunc: () => void) => {
+    setResetSortOrder(() => resetFunc);
+  }, []);
 
   // ItemRangeSelection wrapper function
   const handleItemRangeSelection = (id: string) => {
@@ -140,6 +148,11 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
   // ToggleSelectAll wrapper
   const handleToggleSelectAll = () => {
     toggleSelectAll(filteredResults);
+  };
+  
+  // 検索ハンドラー - ソートリセット関数を追加
+  const handleSearchWithReset = (e: React.FormEvent, newPage?: number) => {
+    handleSearch(e, newPage, resetAllFilters, clearSelectedItems, resetSortOrder || undefined);
   };
 
   // 無限スクロール用のIntersectionObserver
@@ -159,7 +172,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
         isLoading={isLoading}
         isCompanyOnly={isCompanyOnly}
         setIsCompanyOnly={setIsCompanyOnly}
-        handleSearch={handleSearch}
+        handleSearch={handleSearchWithReset}
         isAdvancedSearch={isAdvancedSearch}
         setIsAdvancedSearch={setIsAdvancedSearch}
         setShowHelp={setShowHelp}
@@ -218,6 +231,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
               currentPage={searchParams.page}
               totalPages={totalPages}
               observerTarget={observerTarget}
+              onResetSortOrderChange={handleResetSortOrderChange}
             />
           </div>
         </div>
