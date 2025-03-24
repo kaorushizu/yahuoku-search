@@ -198,20 +198,8 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   // 画像配列の取得
   const images = productDetail?.images || (product?.画像URL ? [product.画像URL] : []);
 
-  // オークフリー商品の1枚目サムネイル画像URL生成
-  const getAucfreeThumbnailUrl = (id: string) => {
-    // IDの最初の文字を取得（uやfなどのプレフィックス）
-    const prefix = id.charAt(0);
-    return `https://auctions.afimg.jp/item_data/thumbnail/20240527/yahoo/c/${prefix}${id.substring(1)}.jpg`;
-  };
-
-  // オークフリーのサムネイル画像URL
-  const aucfreeThumbnailUrl = isAucfree && auctionId ? getAucfreeThumbnailUrl(auctionId) : '';
-
   // 画像拡大ビューを開く
   const openZoomView = () => {
-    // オークフリーの場合は拡大表示しない
-    if (isAucfree) return;
     setShowZoom(true);
   };
 
@@ -285,47 +273,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
             <div className="flex-grow overflow-y-auto overscroll-contain pl-6 pr-4 py-4 space-y-4">
               {/* Swiperスライダー */}
               <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden">
-                {isAucfree ? (
-                  // オークフリーの場合は1枚目のサムネイル画像と注意書きを表示
-                  <div className="relative h-[400px]">
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
-                      {aucfreeThumbnailUrl ? (
-                        <div className="mb-6 relative">
-                          <img
-                            src={aucfreeThumbnailUrl}
-                            alt={title || 'タイトルなし'}
-                            className="max-w-full max-h-[350px] object-contain"
-                            onError={(e) => {
-                              // エラー時はアイコン表示に切り替え
-                              (e.currentTarget.style.display = 'none');
-                              document.getElementById('fallback-icon')?.classList.remove('hidden');
-                            }}
-                          />
-                          <div id="fallback-icon" className="hidden">
-                            <Image size={80} className="text-gray-400 mb-4" />
-                          </div>
-                        </div>
-                      ) : (
-                        <Image size={80} className="text-gray-400 mb-6" />
-                      )}
-                      
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 w-full">
-                        <p className="text-amber-800 text-sm">
-                          この商品は2枚目以降の画像を表示できません。
-                          <a 
-                            href={auctionUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline"
-                          >
-                            オークフリー
-                          </a>
-                          で確認してください。
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : images.length > 0 ? (
+                {images.length > 0 ? (
                   <div className="relative h-[450px]">
                     {/* メインスライダー */}
                     <Swiper
@@ -635,7 +583,11 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                 initialSlide={activeIndex}
                 loop={images.length > 1}
                 thumbs={{ swiper: zoomThumbsSwiper && !zoomThumbsSwiper.destroyed ? zoomThumbsSwiper : null }}
-                onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
+                onSlideChange={(swiper) => {
+                  // loopモード時の実際のインデックスを計算
+                  const realIndex = swiper.realIndex;
+                  setActiveIndex(realIndex);
+                }}
                 onSwiper={setZoomSwiper}
                 className="w-full max-h-[calc(100vh-150px)]"
               >
@@ -667,6 +619,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                     slidesPerView="auto"
                     freeMode={true}
                     watchSlidesProgress={true}
+                    loop={false}
                     className="zoom-thumbs-swiper"
                   >
                     {images.map((src, index) => (
