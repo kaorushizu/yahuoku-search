@@ -293,8 +293,43 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   const endDate = productDetail?.endDate || product?.終了日 || '';
   const auctionId = productDetail?.auctionId || product?.オークションID || '';
   
-  // APIソースを判定（URLに基づいて）
-  const isAucfree = productDetail?.url ? productDetail.url.includes('aucfree.com') : false;
+  // 落札日から180日以内かどうかを判定
+  const isWithin180Days = (() => {
+    if (!endDate) return false;
+    
+    // 日本語形式の日付をパースする
+    const jpDatePattern = /(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2})時(\d{1,2})分/;
+    const match = endDate.match(jpDatePattern);
+    
+    let auctionEndDate: Date;
+    
+    if (match) {
+      // 日本語形式の日付をパース
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1; // JavaScriptの月は0-11
+      const day = parseInt(match[3], 10);
+      const hour = parseInt(match[4], 10);
+      const minute = parseInt(match[5], 10);
+      
+      auctionEndDate = new Date(year, month, day, hour, minute);
+    } else {
+      // 通常の日付形式をパース
+      auctionEndDate = new Date(endDate);
+    }
+    
+    // 日付が無効な場合はfalseを返す
+    if (isNaN(auctionEndDate.getTime())) return false;
+    
+    const currentDate = new Date();
+    const timeDiff = currentDate.getTime() - auctionEndDate.getTime();
+    const daysDiff = timeDiff / (1000 * 3600 * 24);
+    
+    // 180日以内ならtrue
+    return daysDiff <= 180;
+  })();
+  
+  // 落札日から180日以内ならヤフオク、それ以外はオークフリー
+  const isAucfree = !isWithin180Days;
   
   // 商品URLの取得
   const auctionUrl = productDetail?.url || (product ? getAuctionUrl(product.オークションID, product.終了日) : '');
@@ -347,407 +382,411 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
           </div>
         )}
 
-        {isLoading ? (
-          // ローディング表示
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          </div>
-        ) : error ? (
-          // エラー表示
-          <div className="px-6 py-8 text-center text-red-600">
-            <div className="mb-3">
-              <Info size={48} className="mx-auto" />
-            </div>
-            <p className="text-lg">{error}</p>
-            <p className="mt-3 text-sm text-gray-600">基本情報のみ表示します</p>
-          </div>
-        ) : (
-          // 商品情報 - 配置順序を変更
-          <div className="flex flex-col h-full">
-            <div className="flex-grow overflow-y-auto overscroll-contain pl-6 pr-4 py-4 space-y-4">
-              {/* Swiperスライダー */}
-              <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden">
-                {images.length > 0 ? (
-                  <div className="relative h-[450px]">
-                    {/* メインスライダー */}
-                    <Swiper
-                      modules={[Navigation, Pagination]}
-                      spaceBetween={10}
-                      navigation
-                      pagination={{ clickable: true, dynamicBullets: true }}
-                      onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
-                      onSwiper={setMainSwiper}
-                      loop={images.length > 1}
-                      className="h-full rounded-lg"
-                    >
-                      {images.map((src, index) => (
-                        <SwiperSlide key={index} className="flex items-center justify-center">
-                          <div 
-                            className="w-full h-full flex items-center justify-center cursor-zoom-in"
-                            onClick={openZoomView}
-                          >
-                            <img
-                              src={src || NO_IMAGE_URL}
-                              alt={`${title || 'タイトルなし'} - 画像 ${index + 1}`}
-                              className="max-w-full max-h-full object-contain"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = NO_IMAGE_URL;
-                              }}
-                            />
-                          </div>
-                        </SwiperSlide>
-                      ))}
-                      
-                      {/* ズームアイコン */}
-                      <button
-                        className="absolute right-4 top-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors duration-200"
-                        onClick={openZoomView}
+        {/* コンテンツコンテナ - 常にフレックスレイアウトで表示 */}
+        <div className="flex flex-col h-full">
+          {/* コンテンツエリア - 高さを伸ばしてスクロール可能に */}
+          <div className="flex-grow overflow-y-auto overscroll-contain pl-6 pr-4 py-4">
+            {isLoading ? (
+              // ローディング表示
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              </div>
+            ) : error ? (
+              // エラー表示
+              <div className="px-6 py-8 text-center text-red-600">
+                <div className="mb-3">
+                  <Info size={48} className="mx-auto" />
+                </div>
+                <p className="text-lg">{error}</p>
+                <p className="mt-3 text-sm text-gray-600">基本情報のみ表示します</p>
+              </div>
+            ) : (
+              // 商品情報コンテンツ
+              <div className="space-y-4">
+                {/* Swiperスライダー */}
+                <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden">
+                  {images.length > 0 ? (
+                    <div className="relative h-[450px]">
+                      {/* メインスライダー */}
+                      <Swiper
+                        modules={[Navigation, Pagination]}
+                        spaceBetween={10}
+                        navigation
+                        pagination={{ clickable: true, dynamicBullets: true }}
+                        onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
+                        onSwiper={setMainSwiper}
+                        loop={images.length > 1}
+                        className="h-full rounded-lg"
                       >
-                        <ZoomIn size={20} />
-                      </button>
-                    </Swiper>
-                  </div>
-                ) : (
-                  <div className="h-[450px] flex items-center justify-center text-gray-400">
-                    画像はありません
-                  </div>
-                )}
-              </div>
-              
-              {/* タグを先に表示 */}
-              <div className="space-y-4">
-                {/* タグ */}
-                <div className="flex flex-wrap gap-1">
-                  {tags.length > 0 && tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tag.color}`}
-                    >
-                      {tag.label}
-                    </span>
-                  ))}
-                </div>
-
-                {/* 商品名 */}
-                <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-                
-                {/* カテゴリー情報 - 先頭の「オークション > 」を削除 */}
-                {productDetail?.categories && productDetail.categories.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-sm text-gray-700 flex items-start gap-1">
-                      <Folder size={14} className="mt-0.5 flex-shrink-0" />
-                      <div>
-                        {productDetail.categories.slice(1).map((category, index) => (
-                          <span key={category.id}>
-                            {category.name}
-                            {index < productDetail.categories.length - 2 && ' > '}
-                          </span>
+                        {images.map((src, index) => (
+                          <SwiperSlide key={index} className="flex items-center justify-center">
+                            <div 
+                              className="w-full h-full flex items-center justify-center cursor-zoom-in"
+                              onClick={openZoomView}
+                            >
+                              <img
+                                src={src || NO_IMAGE_URL}
+                                alt={`${title || 'タイトルなし'} - 画像 ${index + 1}`}
+                                className="max-w-full max-h-full object-contain"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = NO_IMAGE_URL;
+                                }}
+                              />
+                            </div>
+                          </SwiperSlide>
                         ))}
-                        {productDetail.categories.length > 1 && (
-                          <span 
-                            className="text-gray-500 cursor-pointer hover:text-blue-500 relative"
-                            onClick={() => copyToClipboard(productDetail.categories[productDetail.categories.length - 1].id.toString(), 'category')}
-                          >
-                            {' '}({productDetail.categories[productDetail.categories.length - 1].id})
-                            {copiedCategoryId && (
-                              <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
-                                コピーしました
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </div>
+                        
+                        {/* ズームアイコン */}
+                        <button
+                          className="absolute right-4 top-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors duration-200"
+                          onClick={openZoomView}
+                        >
+                          <ZoomIn size={20} />
+                        </button>
+                      </Swiper>
                     </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* 詳細情報 - 落札金額を含める */}
-              <div className="space-y-4">
-                {/* 価格情報 */}
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="grid grid-cols-3 gap-0">
-                    <div className="p-2 text-center">
-                      <div className="text-gray-600 text-sm flex items-center justify-center gap-1">
-                        <Award size={14} />
-                        落札価格
-                      </div>
-                      <div className="text-xl font-bold text-gray-900">
-                        ¥{price.toLocaleString()}
-                      </div>
+                  ) : (
+                    <div className="h-[450px] flex items-center justify-center text-gray-400">
+                      画像はありません
                     </div>
-                    
-                    {/* 開始価格（API情報） */}
-                    <div className="p-2 border-l border-gray-200 text-center">
-                      <div className="text-gray-500 text-sm flex items-center justify-center gap-1">
-                        <Flag size={14} />
-                        開始価格
-                      </div>
-                      <div className="text-base font-medium text-gray-700">
-                        ¥{productDetail?.startPrice?.toLocaleString() || '---'}
-                      </div>
-                    </div>
-
-                    {/* 入札数 */}
-                    <div className="p-2 border-l border-gray-200 text-center">
-                      <div className="text-gray-500 text-sm flex items-center justify-center gap-1">
-                        <Users size={14} />
-                        入札数
-                      </div>
-                      <div className="text-base font-medium text-gray-700">
-                        {bidCount}件
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
                 
-                {/* その他の詳細情報 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* 商品詳細情報 */}
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <Package2 size={16} />
-                      商品情報
-                    </h3>
-                    <div className="bg-gray-50 p-2 rounded text-sm">
-                      <table className="w-full">
-                        <tbody>
-                          {/* 商品状態（API情報） */}
-                          {productDetail?.condition && (
-                            <tr className="border-b border-gray-200 last:border-0">
-                              <td className="py-1 text-gray-600 flex items-center gap-1">
-                                <Tag size={14} />
-                                商品の状態
-                              </td>
-                              <td className="py-1 text-right">
-                                <span className={getConditionColorClass(productDetail.condition)}>
-                                  {productDetail.condition}
+                {/* タグを先に表示 */}
+                <div className="space-y-4">
+                  {/* タグ */}
+                  <div className="flex flex-wrap gap-1">
+                    {tags.length > 0 && tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tag.color}`}
+                      >
+                        {tag.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* 商品名 */}
+                  <h1 className="text-xl font-bold text-gray-900">{title}</h1>
+                  
+                  {/* カテゴリー情報 - 先頭の「オークション > 」を削除 */}
+                  {productDetail?.categories && productDetail.categories.length > 0 && (
+                    <div className="mt-2">
+                      <div className="text-sm text-gray-700 flex items-start gap-1">
+                        <Folder size={14} className="mt-0.5 flex-shrink-0" />
+                        <div>
+                          {productDetail.categories.slice(1).map((category, index) => (
+                            <span key={category.id}>
+                              {category.name}
+                              {index < productDetail.categories.length - 2 && ' > '}
+                            </span>
+                          ))}
+                          {productDetail.categories.length > 1 && (
+                            <span 
+                              className="text-gray-500 cursor-pointer hover:text-blue-500 relative"
+                              onClick={() => copyToClipboard(productDetail.categories[productDetail.categories.length - 1].id.toString(), 'category')}
+                            >
+                              {' '}({productDetail.categories[productDetail.categories.length - 1].id})
+                              {copiedCategoryId && (
+                                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
+                                  コピーしました
                                 </span>
-                              </td>
-                            </tr>
+                              )}
+                            </span>
                           )}
-                          
-                          {/* ウォッチリスト数（API情報） */}
-                          {productDetail?.watchListNum !== undefined && (
-                            <tr className="border-b border-gray-200 last:border-0">
-                              <td className="py-1 text-gray-600 flex items-center gap-1">
-                                <Eye size={14} />
-                                ウォッチ数
-                              </td>
-                              <td className="py-1 text-right font-medium text-gray-900">{productDetail.watchListNum}人</td>
-                            </tr>
-                          )}
-                          
-                          {/* 入札者数（API情報） */}
-                          {productDetail?.biddersNum !== undefined && (
-                            <tr className="border-b border-gray-200 last:border-0">
-                              <td className="py-1 text-gray-600 flex items-center gap-1">
-                                <Users size={14} />
-                                入札者数
-                              </td>
-                              <td className="py-1 text-right font-medium text-gray-900">{productDetail.biddersNum}人</td>
-                            </tr>
-                          )}
-                          
-                          {/* オークションID */}
-                          <tr className="border-b border-gray-200 last:border-0">
-                            <td className="py-1 text-gray-600 flex items-center gap-1">
-                              <Tag size={14} />
-                              オークションID
-                            </td>
-                            <td className="py-1 text-right relative">
-                              <span 
-                                className="font-medium text-gray-900 cursor-pointer hover:text-blue-500"
-                                onClick={() => copyToClipboard(auctionId, 'auction')}
-                              >
-                                {auctionId}
-                                {copiedAuctionId && (
-                                  <span className="absolute -top-8 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
-                                    コピーしました
-                                  </span>
-                                )}
-                              </span>
-                            </td>
-                          </tr>
-                          
-                          <tr className="last:border-0">
-                            <td className="py-1 text-gray-600 flex items-center gap-1">
-                              <Calendar size={14} />
-                              終了日時
-                            </td>
-                            <td className="py-1 text-right font-medium text-gray-900">
-                              <div className="flex items-center gap-2 justify-end">
-                                {getAgeTag(endDate) && (
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${getAgeTag(endDate)?.color} w-fit`}
-                                  >
-                                    <Calendar size={10} />
-                                    {getAgeTag(endDate)?.label}経過
-                                  </span>
-                                )}
-                                <span>{endDate}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* 詳細情報 - 落札金額を含める */}
+                <div className="space-y-4">
+                  {/* 価格情報 */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="grid grid-cols-3 gap-0">
+                      <div className="p-2 text-center">
+                        <div className="text-gray-600 text-sm flex items-center justify-center gap-1">
+                          <Award size={14} />
+                          落札価格
+                        </div>
+                        <div className="text-xl font-bold text-gray-900">
+                          ¥{price.toLocaleString()}
+                        </div>
+                      </div>
+                      
+                      {/* 開始価格（API情報） */}
+                      <div className="p-2 border-l border-gray-200 text-center">
+                        <div className="text-gray-500 text-sm flex items-center justify-center gap-1">
+                          <Flag size={14} />
+                          開始価格
+                        </div>
+                        <div className="text-base font-medium text-gray-700">
+                          ¥{productDetail?.startPrice?.toLocaleString() || '---'}
+                        </div>
+                      </div>
+
+                      {/* 入札数 */}
+                      <div className="p-2 border-l border-gray-200 text-center">
+                        <div className="text-gray-500 text-sm flex items-center justify-center gap-1">
+                          <Users size={14} />
+                          入札数
+                        </div>
+                        <div className="text-base font-medium text-gray-700">
+                          {bidCount}件
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  {/* 市場分析 */}
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <BarChart4 size={16} />
-                      市場分析
-                    </h3>
-                    <div className="bg-gray-50 p-2 rounded text-sm">
-                      <table className="w-full">
-                        <tbody>
-                          <tr className="border-b border-gray-200">
-                            <td className="py-1 text-gray-600 flex items-center gap-1">
-                              <DollarSign size={14} />
-                              中央値
-                            </td>
-                            <td className="px-4 py-2 text-right text-sm text-gray-600">
-                              {statistics ? `¥${Math.round(statistics.medianPrice).toLocaleString()}` : '---'}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="px-4 py-2 text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Percent size={14} />
-                                相場比較
-                              </div>
-                            </td>
-                            <td className="px-4 py-2 text-right text-sm text-gray-600">
-                              {statistics ? (
-                                <div className="flex flex-col items-end gap-2">
-                                  {(() => {
-                                    const priceDiff = price - statistics.medianPrice;
-                                    const diffPercent = Math.round(Math.abs(priceDiff) / statistics.medianPrice * 100);
-                                    let message;
-                                    let colorClass;
-                                    let icon;
-                                    let barWidth;
-
-                                    if (diffPercent <= 10) {
-                                      message = '中央値と同程度';
-                                      colorClass = 'text-gray-600 bg-gray-100';
-                                      icon = <ArrowRight className="w-4 h-4" />;
-                                      barWidth = '10%';
-                                    } else if (priceDiff > 0) {
-                                      if (diffPercent > 50) {
-                                        message = '中央値よりかなり高い';
-                                        colorClass = 'text-red-700 bg-red-100';
-                                        icon = <TrendingUp className="w-4 h-4" />;
-                                        barWidth = '100%';
-                                      } else if (diffPercent > 30) {
-                                        message = '中央値より高い';
-                                        colorClass = 'text-red-600 bg-red-50';
-                                        icon = <TrendingUp className="w-4 h-4" />;
-                                        barWidth = '60%';
-                                      } else {
-                                        message = '中央値よりやや高い';
-                                        colorClass = 'text-red-400 bg-red-50';
-                                        icon = <TrendingUp className="w-4 h-4" />;
-                                        barWidth = '30%';
-                                      }
-                                    } else {
-                                      if (diffPercent > 50) {
-                                        message = '中央値よりかなり低い';
-                                        colorClass = 'text-green-700 bg-green-100';
-                                        icon = <TrendingDown className="w-4 h-4" />;
-                                        barWidth = '100%';
-                                      } else if (diffPercent > 30) {
-                                        message = '中央値より低い';
-                                        colorClass = 'text-green-600 bg-green-50';
-                                        icon = <TrendingDown className="w-4 h-4" />;
-                                        barWidth = '60%';
-                                      } else {
-                                        message = '中央値よりやや低い';
-                                        colorClass = 'text-green-400 bg-green-50';
-                                        icon = <TrendingDown className="w-4 h-4" />;
-                                        barWidth = '30%';
-                                      }
-                                    }
-
-                                    const baseColorClass = colorClass.split(' ')[0];
-                                    const bgColorClass = colorClass.split(' ')[1];
-
-                                    return (
-                                      <>
-                                        <div className={`flex items-center gap-1 px-2 py-1 rounded ${colorClass}`}>
-                                          {icon}
-                                          <span className="font-medium">
-                                            {message}
-                                          </span>
-                                        </div>
-                                        <div className="w-full flex flex-col gap-1">
-                                          <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                                            <div 
-                                              className={`absolute top-0 ${priceDiff > 0 ? 'right-0' : 'left-0'} h-full ${bgColorClass} rounded-full transition-all duration-300`}
-                                              style={{ width: barWidth }}
-                                            />
-                                          </div>
-                                          <div className="text-xs text-gray-500 text-right">
-                                            {Math.round(Math.abs(priceDiff)).toLocaleString()}円
-                                            <span className="ml-1">({diffPercent}%) {priceDiff > 0 ? '高い' : '低い'}</span>
-                                          </div>
-                                        </div>
-                                      </>
-                                    );
-                                  })()}
+                  {/* その他の詳細情報 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 商品詳細情報 */}
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        <Package2 size={16} />
+                        商品情報
+                      </h3>
+                      <div className="bg-gray-50 p-2 rounded text-sm">
+                        <table className="w-full">
+                          <tbody>
+                            {/* 商品状態（API情報） */}
+                            {productDetail?.condition && (
+                              <tr className="border-b border-gray-200 last:border-0">
+                                <td className="py-1 text-gray-600 flex items-center gap-1">
+                                  <Tag size={14} />
+                                  商品の状態
+                                </td>
+                                <td className="py-1 text-right">
+                                  <span className={getConditionColorClass(productDetail.condition)}>
+                                    {productDetail.condition}
+                                  </span>
+                                </td>
+                              </tr>
+                            )}
+                            
+                            {/* ウォッチリスト数（API情報） */}
+                            {productDetail?.watchListNum !== undefined && (
+                              <tr className="border-b border-gray-200 last:border-0">
+                                <td className="py-1 text-gray-600 flex items-center gap-1">
+                                  <Eye size={14} />
+                                  ウォッチ数
+                                </td>
+                                <td className="py-1 text-right font-medium text-gray-900">{productDetail.watchListNum}人</td>
+                              </tr>
+                            )}
+                            
+                            {/* 入札者数（API情報） */}
+                            {productDetail?.biddersNum !== undefined && (
+                              <tr className="border-b border-gray-200 last:border-0">
+                                <td className="py-1 text-gray-600 flex items-center gap-1">
+                                  <Users size={14} />
+                                  入札者数
+                                </td>
+                                <td className="py-1 text-right font-medium text-gray-900">{productDetail.biddersNum}人</td>
+                              </tr>
+                            )}
+                            
+                            {/* オークションID */}
+                            <tr className="border-b border-gray-200 last:border-0">
+                              <td className="py-1 text-gray-600 flex items-center gap-1">
+                                <Tag size={14} />
+                                オークションID
+                              </td>
+                              <td className="py-1 text-right relative">
+                                <span 
+                                  className="font-medium text-gray-900 cursor-pointer hover:text-blue-500"
+                                  onClick={() => copyToClipboard(auctionId, 'auction')}
+                                >
+                                  {auctionId}
+                                  {copiedAuctionId && (
+                                    <span className="absolute -top-8 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
+                                      コピーしました
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
+                            </tr>
+                            
+                            <tr className="last:border-0">
+                              <td className="py-1 text-gray-600 flex items-center gap-1">
+                                <Calendar size={14} />
+                                終了日時
+                              </td>
+                              <td className="py-1 text-right font-medium text-gray-900">
+                                <div className="flex items-center gap-2 justify-end">
+                                  {getAgeTag(endDate) && (
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${getAgeTag(endDate)?.color} w-fit`}
+                                    >
+                                      <Calendar size={10} />
+                                      {getAgeTag(endDate)?.label}経過
+                                    </span>
+                                  )}
+                                  <span>{endDate}</span>
                                 </div>
-                              ) : '---'}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    {/* 市場分析 */}
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        <BarChart4 size={16} />
+                        市場分析
+                      </h3>
+                      <div className="bg-gray-50 p-2 rounded text-sm">
+                        <table className="w-full">
+                          <tbody>
+                            <tr className="border-b border-gray-200">
+                              <td className="py-1 text-gray-600 flex items-center gap-1">
+                                <DollarSign size={14} />
+                                中央値
+                              </td>
+                              <td className="px-4 py-2 text-right text-sm text-gray-600">
+                                {statistics ? `¥${Math.round(statistics.medianPrice).toLocaleString()}` : '---'}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="px-4 py-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-1">
+                                  <Percent size={14} />
+                                  相場比較
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right text-sm text-gray-600">
+                                {statistics ? (
+                                  <div className="flex flex-col items-end gap-2">
+                                    {(() => {
+                                      const priceDiff = price - statistics.medianPrice;
+                                      const diffPercent = Math.round(Math.abs(priceDiff) / statistics.medianPrice * 100);
+                                      let message;
+                                      let colorClass;
+                                      let icon;
+                                      let barWidth;
+
+                                      if (diffPercent <= 10) {
+                                        message = '中央値と同程度';
+                                        colorClass = 'text-gray-600 bg-gray-100';
+                                        icon = <ArrowRight className="w-4 h-4" />;
+                                        barWidth = '10%';
+                                      } else if (priceDiff > 0) {
+                                        if (diffPercent > 50) {
+                                          message = '中央値よりかなり高い';
+                                          colorClass = 'text-red-700 bg-red-100';
+                                          icon = <TrendingUp className="w-4 h-4" />;
+                                          barWidth = '100%';
+                                        } else if (diffPercent > 30) {
+                                          message = '中央値より高い';
+                                          colorClass = 'text-red-600 bg-red-50';
+                                          icon = <TrendingUp className="w-4 h-4" />;
+                                          barWidth = '60%';
+                                        } else {
+                                          message = '中央値よりやや高い';
+                                          colorClass = 'text-red-400 bg-red-50';
+                                          icon = <TrendingUp className="w-4 h-4" />;
+                                          barWidth = '30%';
+                                        }
+                                      } else {
+                                        if (diffPercent > 50) {
+                                          message = '中央値よりかなり低い';
+                                          colorClass = 'text-green-700 bg-green-100';
+                                          icon = <TrendingDown className="w-4 h-4" />;
+                                          barWidth = '100%';
+                                        } else if (diffPercent > 30) {
+                                          message = '中央値より低い';
+                                          colorClass = 'text-green-600 bg-green-50';
+                                          icon = <TrendingDown className="w-4 h-4" />;
+                                          barWidth = '60%';
+                                        } else {
+                                          message = '中央値よりやや低い';
+                                          colorClass = 'text-green-400 bg-green-50';
+                                          icon = <TrendingDown className="w-4 h-4" />;
+                                          barWidth = '30%';
+                                        }
+                                      }
+
+                                      const baseColorClass = colorClass.split(' ')[0];
+                                      const bgColorClass = colorClass.split(' ')[1];
+
+                                      return (
+                                        <>
+                                          <div className={`flex items-center gap-1 px-2 py-1 rounded ${colorClass}`}>
+                                            {icon}
+                                            <span className="font-medium">
+                                              {message}
+                                            </span>
+                                          </div>
+                                          <div className="w-full flex flex-col gap-1">
+                                            <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                                              <div 
+                                                className={`absolute top-0 ${priceDiff > 0 ? 'right-0' : 'left-0'} h-full ${bgColorClass} rounded-full transition-all duration-300`}
+                                                style={{ width: barWidth }}
+                                              />
+                                            </div>
+                                            <div className="text-xs text-gray-500 text-right">
+                                              {Math.round(Math.abs(priceDiff)).toLocaleString()}円
+                                              <span className="ml-1">({diffPercent}%) {priceDiff > 0 ? '高い' : '低い'}</span>
+                                            </div>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                ) : '---'}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* 商品説明（API情報） - フレームなしでシンプルに表示 */}
-              {productDetail?.description && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    <FileText size={16} />
-                    商品説明
-                  </h3>
-                  <div className="text-sm text-gray-700">
-                    <div dangerouslySetInnerHTML={{ __html: productDetail.description }} />
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* 外部リンクボタン - 下部に固定 */}
-            <div className="sticky bottom-0 left-0 right-0 pl-6 pr-4 pt-2 pb-8 bg-white border-t mt-auto">
-              <div className="flex gap-2">
-                {/* 閉じるボタン */}
-                <button
-                  onClick={onClose}
-                  className="w-1/3 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm"
-                >
-                  <X size={16} />
-                  閉じる
-                </button>
                 
-                {/* オークションページで見るボタン */}
-                <a 
-                  href={auctionUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm"
-                >
-                  <ExternalLink size={16} />
-                  {isAucfree ? 'オークフリーで見る' : 'オークションページで見る'}
-                </a>
+                {/* 商品説明（API情報） - フレームなしでシンプルに表示 */}
+                {productDetail?.description && (
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      <FileText size={16} />
+                      商品説明
+                    </h3>
+                    <div className="text-sm text-gray-700">
+                      <div dangerouslySetInnerHTML={{ __html: productDetail.description }} />
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
+          </div>
+          
+          {/* 外部リンクボタン - 下部に固定（常に表示） */}
+          <div className="sticky bottom-0 left-0 right-0 pl-6 pr-4 pt-2 pb-8 bg-white border-t mt-auto">
+            <div className="flex gap-2">
+              {/* 閉じるボタン - 常に表示 */}
+              <button
+                onClick={onClose}
+                className="w-1/3 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm"
+              >
+                <X size={16} />
+                閉じる
+              </button>
+              
+              {/* オークションページで見るボタン - 常に表示 */}
+              <a 
+                href={auctionId ? (isAucfree ? `https://aucfree.com/items/${auctionId}` : `https://auctions.yahoo.co.jp/jp/auction/${auctionId}`) : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-2/3 ${!auctionId ? 'opacity-50 pointer-events-none' : ''} bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm`}
+              >
+                <ExternalLink size={16} />
+                {isAucfree ? 'オークフリーで見る' : 'オークションページで見る'}
+              </a>
             </div>
           </div>
-        )}
+        </div>
       </div>
       
       {/* 画像拡大モーダル */}
