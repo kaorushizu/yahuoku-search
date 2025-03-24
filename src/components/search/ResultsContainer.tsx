@@ -332,17 +332,19 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
       <div className="md:col-span-4">
         {results.length > 0 && (
           <div className="space-y-4">
-            {/* 統計情報パネル (デスクトップ) */}
+            {/* 統計情報パネル (デスクトップ) - モバイルでは非表示 */}
             {statistics && (
-              <StatisticsPanel 
-                statistics={statistics}
-                currentStatistics={currentStatistics}
-                onPriceRangeClick={handlePriceRangeClick}
-                selectedPriceRanges={selectedPriceRanges}
-                hasActiveFilters={hasAnyFilter()}
-                hasActivePriceFilters={selectedPriceRanges.length > 0}
-                onClearAllPriceRanges={clearAllPriceRangeFilters}
-              />
+              <div className="hidden md:block">
+                <StatisticsPanel 
+                  statistics={statistics}
+                  currentStatistics={currentStatistics}
+                  onPriceRangeClick={handlePriceRangeClick}
+                  selectedPriceRanges={selectedPriceRanges}
+                  hasActiveFilters={hasAnyFilter()}
+                  hasActivePriceFilters={selectedPriceRanges.length > 0}
+                  onClearAllPriceRanges={clearAllPriceRangeFilters}
+                />
+              </div>
             )}
 
             {/* 検索結果リスト */}

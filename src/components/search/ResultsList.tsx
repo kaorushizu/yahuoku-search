@@ -128,78 +128,77 @@ const ResultsList: React.FC<ResultsListProps> = ({
               key={item.オークションID}
               className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow duration-200 relative group"
             >
-              {/* 商品選択チェック */}
-              <button
-                onClick={(e) => {
-                  if (e.shiftKey) {
-                    handleRangeSelection(item.オークションID);
-                  } else {
-                    toggleItemSelection(item.オークションID);
-                  }
-                }}
-                className={`absolute top-2 right-2 z-10 p-1 rounded-full ${
-                  selectedItems.has(item.オークションID)
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white/80 text-gray-400 opacity-0 group-hover:opacity-100'
-                }`}
-              >
-                {selectedItems.has(item.オークションID) ? (
-                  <CheckCircle2 size={20} />
-                ) : (
-                  <Circle size={20} />
-                )}
-              </button>
-              
-              {/* 商品画像とタグ (ドロワーを開くように変更) */}
-              <div 
-                className="block aspect-square relative cursor-pointer"
-                onClick={(e) => handleProductClick(item, e)}
-              >
-                <img
-                  src={item.画像URL || NO_IMAGE_URL}
-                  alt={item.商品名 || 'タイトルなし'}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = NO_IMAGE_URL;
+              {/* PC表示のみ商品選択チェックを表示 */}
+              <div className="hidden md:block">
+                <button
+                  onClick={(e) => {
+                    if (e.shiftKey) {
+                      handleRangeSelection(item.オークションID);
+                    } else {
+                      toggleItemSelection(item.オークションID);
+                    }
                   }}
-                />
-                {/* 商品タグ表示 */}
-                <div className="absolute top-0 left-0 p-2 flex flex-wrap gap-1 max-w-[calc(100%-48px)]">
-                  {getProductTags(item.商品名 || '').map((tag, index) => (
-                    <span
-                      key={index}
-                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${tag.color} shadow-sm backdrop-blur-[2px]`}
-                    >
-                      {tag.label}
-                    </span>
-                  ))}
-                </div>
-                {/* 価格情報 */}
-                <div className="absolute bottom-0 left-0 px-2 py-1 m-2 rounded bg-black/60 backdrop-blur-[2px]">
-                  <div className="flex items-center gap-2">
-                    <div className="text-white text-lg font-bold drop-shadow">¥{(item.落札金額 ?? 0).toLocaleString()}</div>
-                    <div className="text-white text-xs font-medium">{(item.入札数 ?? 0)}件</div>
-                  </div>
-                </div>
+                  className={`absolute top-2 right-2 z-10 p-1 rounded-full ${
+                    selectedItems.has(item.オークションID)
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white/80 text-gray-400 opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  {selectedItems.has(item.オークションID) ? (
+                    <CheckCircle2 size={20} />
+                  ) : (
+                    <Circle size={20} />
+                  )}
+                </button>
               </div>
               
-              {/* 商品名と終了日 (クリックでドロワーを開く) */}
-              <div 
-                className="p-2 cursor-pointer"
-                onClick={(e) => handleProductClick(item, e)}
-              >
-                <div className="space-y-1">
-                  <h3 
-                    className="text-xs font-medium text-gray-800 line-clamp-2"
-                    onMouseEnter={(e) => handleMouseEnter(item.商品名 || '', e)}
-                    onMouseMove={handleMouseMove}
-                    onMouseLeave={handleMouseLeave}
-                  >
-                    {item.商品名 || 'タイトルなし'}
-                  </h3>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <span>{item.終了日 || '終了日不明'}</span>
+              {/* 商品全体をクリック可能に - 詳細ページを開く */}
+              <div className="cursor-pointer" onClick={(e) => handleProductClick(item, e)}>
+                {/* 商品画像とタグ */}
+                <div className="block aspect-square relative">
+                  <img
+                    src={item.画像URL || NO_IMAGE_URL}
+                    alt={item.商品名 || 'タイトルなし'}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = NO_IMAGE_URL;
+                    }}
+                  />
+                  {/* 商品タグ表示 */}
+                  <div className="absolute top-0 left-0 p-2 flex flex-wrap gap-1 max-w-[calc(100%-48px)]">
+                    {getProductTags(item.商品名 || '').map((tag, index) => (
+                      <span
+                        key={index}
+                        className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${tag.color} shadow-sm backdrop-blur-[2px]`}
+                      >
+                        {tag.label}
+                      </span>
+                    ))}
+                  </div>
+                  {/* 価格情報 */}
+                  <div className="absolute bottom-0 left-0 px-2 py-1 m-2 rounded bg-black/60 backdrop-blur-[2px]">
+                    <div className="flex items-center gap-2">
+                      <div className="text-white text-lg font-bold drop-shadow">¥{(item.落札金額 ?? 0).toLocaleString()}</div>
+                      <div className="text-white text-xs font-medium">{(item.入札数 ?? 0)}件</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 商品名と終了日 */}
+                <div className="p-2">
+                  <div className="space-y-1">
+                    <h3 
+                      className="text-xs font-medium text-gray-800 line-clamp-2"
+                      onMouseEnter={(e) => handleMouseEnter(item.商品名 || '', e)}
+                      onMouseMove={handleMouseMove}
+                      onMouseLeave={handleMouseLeave}
+                    >
+                      {item.商品名 || 'タイトルなし'}
+                    </h3>
+                    <div className="flex items-center text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <span>{item.終了日 || '終了日不明'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -214,7 +213,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-14">
+                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 w-14 hidden md:table-cell">
                     <input 
                       type="checkbox"
                       className="w-5 h-5 rounded text-blue-500 focus:ring-blue-400"
@@ -236,7 +235,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
                     className="group hover:bg-gray-50 cursor-pointer"
                     onClick={(e) => handleProductClick(item, e)}
                   >
-                    <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                    <td className="px-2 py-3 text-center hidden md:table-cell" onClick={e => e.stopPropagation()}>
                       <input 
                         type="checkbox"
                         className={`w-5 h-5 rounded text-blue-500 focus:ring-blue-400 ${
