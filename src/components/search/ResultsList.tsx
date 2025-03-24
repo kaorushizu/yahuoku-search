@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExternalLink, CheckCircle2, Circle, Package2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ExternalLink, CheckCircle2, Circle, Package2, ArrowUpDown, ArrowUp, ArrowDown, Calendar } from 'lucide-react';
 import ImageMagnifier from '../common/ImageMagnifier';
 import { AuctionItem, ProductTag, SortOrder } from '../../types';
 import ProductDrawer from '../common/ProductDrawer';
@@ -24,6 +24,73 @@ interface ResultsListProps {
 
 // No Image画像のURLを定数として定義
 const NO_IMAGE_URL = 'https://placehold.jp/bdbdc2/ffffff/400x400.png?text=No%20Image';
+
+// 落札日からの経過年数を取得する関数
+const getYearsSinceAuction = (endDate: string): number => {
+  if (!endDate) return 0;
+  
+  // 日付フォーマットが「2023年10月08日」の場合
+  const datePattern = /(\d{4})年(\d{1,2})月(\d{1,2})日/;
+  const match = endDate.match(datePattern);
+  
+  if (match) {
+    const [_, year, month, day] = match;
+    const auctionDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    const now = new Date();
+    
+    // 経過年数を計算
+    const diffTime = now.getTime() - auctionDate.getTime();
+    const diffYears = diffTime / (1000 * 3600 * 24 * 365.25);
+    
+    return diffYears;
+  }
+  
+  return 0;
+};
+
+// 経過年数に基づいてタグ情報を取得する関数
+const getAgeTag = (endDate: string): ProductTag | null => {
+  const years = getYearsSinceAuction(endDate);
+  
+  if (years >= 9) {
+    return {
+      keyword: 'age_9plus',
+      label: '9年',
+      color: 'bg-red-500 text-white',
+      group: '状態' as const
+    };
+  } else if (years >= 7) {
+    return {
+      keyword: 'age_7plus',
+      label: '7年',
+      color: 'bg-orange-500 text-white',
+      group: '状態' as const
+    };
+  } else if (years >= 5) {
+    return {
+      keyword: 'age_5plus',
+      label: '5年',
+      color: 'bg-yellow-400 text-gray-800',
+      group: '状態' as const
+    };
+  } else if (years >= 3) {
+    return {
+      keyword: 'age_3plus',
+      label: '3年',
+      color: 'bg-yellow-200 text-gray-800',
+      group: '状態' as const
+    };
+  } else if (years >= 1) {
+    return {
+      keyword: 'age_1plus',
+      label: '1年',
+      color: 'bg-gray-300 text-gray-800',
+      group: '状態' as const
+    };
+  }
+  
+  return null;
+};
 
 /**
  * 検索結果リストコンポーネント
@@ -168,7 +235,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
                   <div className="absolute top-0 left-0 p-2 flex flex-wrap gap-1 max-w-[calc(100%-48px)]">
                     {getProductTags(item.商品名 || '').map((tag, index) => (
                       <span
-                        key={index}
+                        key={`product-${index}`}
                         className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${tag.color} shadow-sm backdrop-blur-[2px]`}
                       >
                         {tag.label}
@@ -198,6 +265,15 @@ const ResultsList: React.FC<ResultsListProps> = ({
                     <div className="flex items-center text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <span>{item.終了日 || '終了日不明'}</span>
+                        {/* 落札日の古さを示すタグ - 落札日の横に表示 */}
+                        {getAgeTag(item.終了日 || '') && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${getAgeTag(item.終了日 || '')?.color}`}
+                          >
+                            <Calendar size={10} />
+                            {getAgeTag(item.終了日 || '')?.label}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -224,7 +300,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">商品名</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 whitespace-nowrap">現在価格</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 whitespace-nowrap">入札数</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 whitespace-nowrap">終了日時</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 whitespace-nowrap w-36">終了日時</th>
                   <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 w-10"></th>
                 </tr>
               </thead>
@@ -279,11 +355,13 @@ const ResultsList: React.FC<ResultsListProps> = ({
                           >
                             {item.商品名 || 'タイトルなし'}
                           </div>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          {/* テーブルビューのタグ表示 */}
+                          <div className="flex flex-wrap gap-1 mt-1 mb-1">
                             {getProductTags(item.商品名 || '').map((tag, index) => (
-                              <span
-                                key={index}
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium ${tag.color}`}
+                              <span 
+                                key={`table-${index}`}
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tag.color}`}
+                                onClick={e => e.stopPropagation()}
                               >
                                 {tag.label}
                               </span>
@@ -301,7 +379,18 @@ const ResultsList: React.FC<ResultsListProps> = ({
                       <div className="text-sm text-gray-900">{item.入札数 ?? 0}件</div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-600">{item.終了日 || '終了日不明'}</div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm text-gray-600">{item.終了日 || '終了日不明'}</span>
+                        {/* 落札日の古さを示すタグ - テーブルビューの落札日の下に表示 */}
+                        {getAgeTag(item.終了日 || '') && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${getAgeTag(item.終了日 || '')?.color} w-fit`}
+                          >
+                            <Calendar size={10} />
+                            {getAgeTag(item.終了日 || '')?.label}経過
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                       <a
