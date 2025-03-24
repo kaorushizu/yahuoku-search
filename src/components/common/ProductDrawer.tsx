@@ -51,6 +51,14 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   const [copiedCategoryId, setCopiedCategoryId] = useState(false);
   const [copiedAuctionId, setCopiedAuctionId] = useState(false);
   const resizerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useRef(window.innerWidth < 768).current;
+
+  // 初期表示時にモバイルの場合は画面幅に合わせる
+  useEffect(() => {
+    if (isMobile) {
+      setDrawerWidth(window.innerWidth);
+    }
+  }, [isMobile]);
 
   // ドロワーが閉じられたらリセット
   useEffect(() => {
@@ -64,7 +72,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
 
   // ドラッグによるサイズ調整機能
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return;
 
     const handleMouseDown = (e: MouseEvent) => {
       e.preventDefault();
@@ -102,7 +110,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isOpen, isDragging]);
+  }, [isOpen, isDragging, isMobile]);
 
   // ショートカットキーの設定
   useEffect(() => {
@@ -233,47 +241,33 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
         onClick={onClose}
       />
       
-      {/* リサイザー */}
-      <div
-        ref={resizerRef}
-        className="fixed left-0 top-0 bottom-0 w-4 bg-gray-200 hover:bg-gray-300 cursor-ew-resize z-[51] transition-opacity flex items-center justify-center"
-        style={{ 
-          left: `calc(100% - ${drawerWidth}px - 4px)`,
-          display: isOpen ? 'block' : 'none'
-        }}
-      >
-        <div className="h-full flex items-center justify-center">
-          <div className="w-0.5 h-16 bg-gray-400 rounded-full"></div>
-        </div>
-      </div>
-
       {/* ドロワー */}
       <div 
         className={`fixed right-0 top-0 h-full bg-white shadow-lg z-50 overflow-y-auto overscroll-contain transition-transform duration-300 transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         } ${isDragging ? 'transition-none' : ''}`}
-        style={{ width: `${drawerWidth}px` }}
+        style={{ width: isMobile ? '100%' : `${drawerWidth}px` }}
         onWheel={(e) => {
-          // スクロールがドロワーの最上部または最下部に達した場合でも
-          // 親要素へのスクロール伝播を防止
           e.stopPropagation();
-          
-          // ドロワー内の要素
-          const drawer = e.currentTarget;
-          
-          // 最上部でのスクロールアップまたは最下部でのスクロールダウンを防止
-          if (
-            (drawer.scrollTop === 0 && e.deltaY < 0) || 
-            (drawer.scrollHeight - drawer.scrollTop === drawer.clientHeight && e.deltaY > 0)
-          ) {
-            e.preventDefault();
-          }
         }}
         onTouchStart={(e) => {
-          // タッチイベントのデフォルト動作を許可
           e.stopPropagation();
         }}
       >
+        {/* リサイザー - モバイルでは非表示 */}
+        {!isMobile && (
+          <div 
+            ref={resizerRef}
+            className={`absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize z-[51] ${
+              isDragging ? 'bg-blue-100' : 'hover:bg-gray-100'
+            }`}
+          >
+            <div className="h-full flex items-center justify-center">
+              <div className="w-0.5 h-16 bg-gray-400 rounded-full"></div>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           // ローディング表示
           <div className="flex justify-center items-center h-64">
@@ -509,117 +503,119 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                     </div>
                   </div>
                   
-                  {/* 市場分析 */}
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      <BarChart4 size={16} />
-                      市場分析
-                    </h3>
-                    <div className="bg-gray-50 p-2 rounded text-sm">
-                      <table className="w-full">
-                        <tbody>
-                          <tr className="border-b border-gray-200">
-                            <td className="py-1 text-gray-600 flex items-center gap-1">
-                              <DollarSign size={14} />
-                              中央値
-                            </td>
-                            <td className="px-4 py-2 text-right text-sm text-gray-600">
-                              {statistics ? `¥${Math.round(statistics.medianPrice).toLocaleString()}` : '---'}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="px-4 py-2 text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Percent size={14} />
-                                相場比較
-                              </div>
-                            </td>
-                            <td className="px-4 py-2 text-right text-sm text-gray-600">
-                              {statistics ? (
-                                <div className="flex flex-col items-end gap-2">
-                                  {(() => {
-                                    const priceDiff = price - statistics.medianPrice;
-                                    const diffPercent = Math.round(Math.abs(priceDiff) / statistics.medianPrice * 100);
-                                    let message;
-                                    let colorClass;
-                                    let icon;
-                                    let barWidth;
-
-                                    if (diffPercent <= 10) {
-                                      message = '中央値と同程度';
-                                      colorClass = 'text-gray-600 bg-gray-100';
-                                      icon = <ArrowRight className="w-4 h-4" />;
-                                      barWidth = '10%';
-                                    } else if (priceDiff > 0) {
-                                      if (diffPercent > 50) {
-                                        message = '中央値よりかなり高い';
-                                        colorClass = 'text-red-700 bg-red-100';
-                                        icon = <TrendingUp className="w-4 h-4" />;
-                                        barWidth = '100%';
-                                      } else if (diffPercent > 30) {
-                                        message = '中央値より高い';
-                                        colorClass = 'text-red-600 bg-red-50';
-                                        icon = <TrendingUp className="w-4 h-4" />;
-                                        barWidth = '60%';
-                                      } else {
-                                        message = '中央値よりやや高い';
-                                        colorClass = 'text-red-400 bg-red-50';
-                                        icon = <TrendingUp className="w-4 h-4" />;
-                                        barWidth = '30%';
-                                      }
-                                    } else {
-                                      if (diffPercent > 50) {
-                                        message = '中央値よりかなり低い';
-                                        colorClass = 'text-green-700 bg-green-100';
-                                        icon = <TrendingDown className="w-4 h-4" />;
-                                        barWidth = '100%';
-                                      } else if (diffPercent > 30) {
-                                        message = '中央値より低い';
-                                        colorClass = 'text-green-600 bg-green-50';
-                                        icon = <TrendingDown className="w-4 h-4" />;
-                                        barWidth = '60%';
-                                      } else {
-                                        message = '中央値よりやや低い';
-                                        colorClass = 'text-green-400 bg-green-50';
-                                        icon = <TrendingDown className="w-4 h-4" />;
-                                        barWidth = '30%';
-                                      }
-                                    }
-
-                                    const baseColorClass = colorClass.split(' ')[0];
-                                    const bgColorClass = colorClass.split(' ')[1];
-
-                                    return (
-                                      <>
-                                        <div className={`flex items-center gap-1 px-2 py-1 rounded ${colorClass}`}>
-                                          {icon}
-                                          <span className="font-medium">
-                                            {message}
-                                          </span>
-                                        </div>
-                                        <div className="w-full flex flex-col gap-1">
-                                          <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                                            <div 
-                                              className={`absolute top-0 ${priceDiff > 0 ? 'right-0' : 'left-0'} h-full ${bgColorClass} rounded-full transition-all duration-300`}
-                                              style={{ width: barWidth }}
-                                            />
-                                          </div>
-                                          <div className="text-xs text-gray-500 text-right">
-                                            {Math.round(Math.abs(priceDiff)).toLocaleString()}円
-                                            <span className="ml-1">({diffPercent}%) {priceDiff > 0 ? '高い' : '低い'}</span>
-                                          </div>
-                                        </div>
-                                      </>
-                                    );
-                                  })()}
+                  {/* 市場分析 - モバイル表示では非表示 */}
+                  {!isMobile && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        <BarChart4 size={16} />
+                        市場分析
+                      </h3>
+                      <div className="bg-gray-50 p-2 rounded text-sm">
+                        <table className="w-full">
+                          <tbody>
+                            <tr className="border-b border-gray-200">
+                              <td className="py-1 text-gray-600 flex items-center gap-1">
+                                <DollarSign size={14} />
+                                中央値
+                              </td>
+                              <td className="px-4 py-2 text-right text-sm text-gray-600">
+                                {statistics ? `¥${Math.round(statistics.medianPrice).toLocaleString()}` : '---'}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="px-4 py-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-1">
+                                  <Percent size={14} />
+                                  相場比較
                                 </div>
-                              ) : '---'}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                              </td>
+                              <td className="px-4 py-2 text-right text-sm text-gray-600">
+                                {statistics ? (
+                                  <div className="flex flex-col items-end gap-2">
+                                    {(() => {
+                                      const priceDiff = price - statistics.medianPrice;
+                                      const diffPercent = Math.round(Math.abs(priceDiff) / statistics.medianPrice * 100);
+                                      let message;
+                                      let colorClass;
+                                      let icon;
+                                      let barWidth;
+
+                                      if (diffPercent <= 10) {
+                                        message = '中央値と同程度';
+                                        colorClass = 'text-gray-600 bg-gray-100';
+                                        icon = <ArrowRight className="w-4 h-4" />;
+                                        barWidth = '10%';
+                                      } else if (priceDiff > 0) {
+                                        if (diffPercent > 50) {
+                                          message = '中央値よりかなり高い';
+                                          colorClass = 'text-red-700 bg-red-100';
+                                          icon = <TrendingUp className="w-4 h-4" />;
+                                          barWidth = '100%';
+                                        } else if (diffPercent > 30) {
+                                          message = '中央値より高い';
+                                          colorClass = 'text-red-600 bg-red-50';
+                                          icon = <TrendingUp className="w-4 h-4" />;
+                                          barWidth = '60%';
+                                        } else {
+                                          message = '中央値よりやや高い';
+                                          colorClass = 'text-red-400 bg-red-50';
+                                          icon = <TrendingUp className="w-4 h-4" />;
+                                          barWidth = '30%';
+                                        }
+                                      } else {
+                                        if (diffPercent > 50) {
+                                          message = '中央値よりかなり低い';
+                                          colorClass = 'text-green-700 bg-green-100';
+                                          icon = <TrendingDown className="w-4 h-4" />;
+                                          barWidth = '100%';
+                                        } else if (diffPercent > 30) {
+                                          message = '中央値より低い';
+                                          colorClass = 'text-green-600 bg-green-50';
+                                          icon = <TrendingDown className="w-4 h-4" />;
+                                          barWidth = '60%';
+                                        } else {
+                                          message = '中央値よりやや低い';
+                                          colorClass = 'text-green-400 bg-green-50';
+                                          icon = <TrendingDown className="w-4 h-4" />;
+                                          barWidth = '30%';
+                                        }
+                                      }
+
+                                      const baseColorClass = colorClass.split(' ')[0];
+                                      const bgColorClass = colorClass.split(' ')[1];
+
+                                      return (
+                                        <>
+                                          <div className={`flex items-center gap-1 px-2 py-1 rounded ${colorClass}`}>
+                                            {icon}
+                                            <span className="font-medium">
+                                              {message}
+                                            </span>
+                                          </div>
+                                          <div className="w-full flex flex-col gap-1">
+                                            <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                                              <div 
+                                                className={`absolute top-0 ${priceDiff > 0 ? 'right-0' : 'left-0'} h-full ${bgColorClass} rounded-full transition-all duration-300`}
+                                                style={{ width: barWidth }}
+                                              />
+                                            </div>
+                                            <div className="text-xs text-gray-500 text-right">
+                                              {Math.round(Math.abs(priceDiff)).toLocaleString()}円
+                                              <span className="ml-1">({diffPercent}%) {priceDiff > 0 ? '高い' : '低い'}</span>
+                                            </div>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                ) : '---'}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
               
