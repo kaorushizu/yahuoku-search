@@ -16,6 +16,85 @@ import 'swiper/css/thumbs';
 // No Image画像のURLを定数として定義
 const NO_IMAGE_URL = 'https://placehold.jp/bdbdc2/ffffff/400x400.png?text=No%20Image';
 
+// 経過年数を計算する関数
+const getYearsSinceAuction = (endDate: string): number => {
+  if (!endDate) return 0;
+  
+  // 日本語形式の日付をパースする（例: 2021年2月22日 20時41分）
+  const jpDatePattern = /(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2})時(\d{1,2})分/;
+  const match = endDate.match(jpDatePattern);
+  
+  let endDateTime: Date;
+  
+  if (match) {
+    // 日本語形式の日付をパース
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // JavaScriptの月は0-11
+    const day = parseInt(match[3], 10);
+    const hour = parseInt(match[4], 10);
+    const minute = parseInt(match[5], 10);
+    
+    endDateTime = new Date(year, month, day, hour, minute);
+  } else {
+    // 通常の日付形式をパース
+    endDateTime = new Date(endDate);
+  }
+  
+  if (!isNaN(endDateTime.getTime())) {
+    const currentDate = new Date();
+    const diffTime = currentDate.getTime() - endDateTime.getTime();
+    const diffYears = diffTime / (1000 * 3600 * 24 * 365);
+    
+    return diffYears;
+  }
+  
+  return 0;
+};
+
+// 経過年数に基づいてタグ情報を取得する関数
+const getAgeTag = (endDate: string): ProductTag | null => {
+  const years = getYearsSinceAuction(endDate);
+  
+  if (years >= 9) {
+    return {
+      keyword: 'age_9plus',
+      label: '9年',
+      color: 'bg-red-500 text-white',
+      group: '状態' as const
+    };
+  } else if (years >= 7) {
+    return {
+      keyword: 'age_7plus',
+      label: '7年',
+      color: 'bg-orange-500 text-white',
+      group: '状態' as const
+    };
+  } else if (years >= 5) {
+    return {
+      keyword: 'age_5plus',
+      label: '5年',
+      color: 'bg-yellow-400 text-gray-800',
+      group: '状態' as const
+    };
+  } else if (years >= 3) {
+    return {
+      keyword: 'age_3plus',
+      label: '3年',
+      color: 'bg-yellow-200 text-gray-800',
+      group: '状態' as const
+    };
+  } else if (years >= 1) {
+    return {
+      keyword: 'age_1plus',
+      label: '1年',
+      color: 'bg-gray-300 text-gray-800',
+      group: '状態' as const
+    };
+  }
+  
+  return null;
+};
+
 interface ProductDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -496,7 +575,19 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                               <Calendar size={14} />
                               終了日時
                             </td>
-                            <td className="py-1 text-right font-medium text-gray-900">{endDate}</td>
+                            <td className="py-1 text-right font-medium text-gray-900">
+                              <div className="flex items-center gap-2 justify-end">
+                                {getAgeTag(endDate) && (
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${getAgeTag(endDate)?.color} w-fit`}
+                                  >
+                                    <Calendar size={10} />
+                                    {getAgeTag(endDate)?.label}経過
+                                  </span>
+                                )}
+                                <span>{endDate}</span>
+                              </div>
+                            </td>
                           </tr>
                         </tbody>
                       </table>
