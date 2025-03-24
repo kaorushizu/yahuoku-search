@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useSearch } from './contexts/SearchContext';
 import { useFilter } from './contexts/FilterContext';
 import { useSelection } from './contexts/SelectionContext';
@@ -9,6 +10,9 @@ import SearchPage from './components/search/SearchPage';
 import ResultsPage from './components/search/ResultsPage';
 
 function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   // コンテキストからフックを使用
   const {
     searchParams,
@@ -23,7 +27,7 @@ function App() {
     error,
     isCompanyOnly,
     setIsCompanyOnly,
-    handleSearch,
+    handleSearch: originalHandleSearch,
     loadMore: originalLoadMore,
     getAuctionUrl
   } = useSearch();
@@ -75,12 +79,46 @@ function App() {
   // filteredResultsの統計情報を計算
   const statistics = useStatistics(filteredResults);
 
+  // URLからクエリパラメータを取得して検索を実行する
+  useEffect(() => {
+    // URLからクエリパラメータを解析
+    const searchParams = new URLSearchParams(location.search);
+    const keyword = searchParams.get('keyword');
+    
+    // クエリパラメータにキーワードがあり、現在の検索キーワードと異なる場合は検索を実行
+    if (keyword && keyword !== currentSearchKeyword) {
+      setSearchParams(prev => ({ ...prev, keyword }));
+      
+      // フォームイベントをシミュレートして検索実行
+      const event = new Event('submit') as unknown as React.FormEvent;
+      originalHandleSearch(event);
+    }
+  }, [location.search, currentSearchKeyword, setSearchParams, originalHandleSearch]);
+
   // コンテキスト間の連携を行うloadMore関数
   const loadMore = useCallback(() => {
     console.log('Loading more items with filters:', filterOptions);
     console.log('Show selected only:', showSelectedOnly);
     originalLoadMore(filterOptions, showSelectedOnly);
   }, [originalLoadMore, filterOptions, showSelectedOnly]);
+
+  // 検索時にURLを更新する修正版handleSearch関数
+  const handleSearch = useCallback((e: React.FormEvent, newPage?: number, resetFunc?: () => void, clearFunc?: () => void, sortFunc?: () => void) => {
+    e.preventDefault();
+    
+    // 新しいページが指定されていれば、ページネーションを更新
+    if (newPage) {
+      setSearchParams(prev => ({ ...prev, page: newPage }));
+    }
+    
+    // 検索を実行
+    originalHandleSearch(e, newPage, resetFunc, clearFunc, sortFunc);
+    
+    // URLを検索クエリで更新
+    if (searchParams.keyword) {
+      navigate(`/search?keyword=${encodeURIComponent(searchParams.keyword)}`);
+    }
+  }, [originalHandleSearch, searchParams.keyword, navigate, setSearchParams]);
 
   // Ctrl+Sで検索ボックスにフォーカスするショートカット
   useEffect(() => {
@@ -142,22 +180,10 @@ function App() {
     hasPriceRangeFilter
   ]);
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      {/* 初期画面：検索フォーム */}
-      {results.length === 0 && !currentSearchKeyword ? (
-        <SearchPage 
-          searchParams={searchParams}
-          setSearchParams={setSearchParams}
-          searchHistory={searchHistory}
-          isLoading={isLoading}
-          isCompanyOnly={isCompanyOnly}
-          setIsCompanyOnly={setIsCompanyOnly}
-          isAdvancedSearch={isAdvancedSearch}
-          setIsAdvancedSearch={setIsAdvancedSearch}
-          handleSearch={handleSearch}
-        />
-      ) : (
+  // 検索ページまたは結果ページのコンポーネントを表示
+  const renderContent = () => {
+    if (location.pathname === '/search' || (results.length > 0 && currentSearchKeyword)) {
+      return (
         <ResultsPage 
           searchParams={searchParams}
           setSearchParams={setSearchParams}
@@ -213,7 +239,31 @@ function App() {
           selectedStatistics={selectedStatistics || defaultStats}
           hasFilters={hasFilters()}
         />
-      )}
+      );
+    } else {
+      return (
+        <SearchPage 
+          searchParams={searchParams}
+          setSearchParams={setSearchParams}
+          searchHistory={searchHistory}
+          isLoading={isLoading}
+          isCompanyOnly={isCompanyOnly}
+          setIsCompanyOnly={setIsCompanyOnly}
+          isAdvancedSearch={isAdvancedSearch}
+          setIsAdvancedSearch={setIsAdvancedSearch}
+          handleSearch={handleSearch}
+        />
+      );
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <Routes>
+        <Route path="/" element={renderContent()} />
+        <Route path="/search" element={renderContent()} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }

@@ -69,6 +69,9 @@ interface ResultsPageProps {
   // 統計情報
   statistics: Statistics;
   selectedStatistics: Statistics;
+  
+  // フィルター状態
+  hasFilters: boolean;
 }
 
 /**
@@ -127,7 +130,8 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
   handleRangeSelection,
   toggleSelectAll,
   statistics,
-  selectedStatistics
+  selectedStatistics,
+  hasFilters
 }) => {
   // 無限スクロール用のRef
   const observerTarget = useRef<HTMLDivElement>(null);

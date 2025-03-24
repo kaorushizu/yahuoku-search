@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import SearchForm from './SearchForm';
 import AdvancedSearchPanel from './AdvancedSearchPanel';
@@ -31,6 +32,19 @@ const SearchPage: React.FC<SearchPageProps> = ({
   setIsAdvancedSearch,
   handleSearch
 }) => {
+  const navigate = useNavigate();
+  
+  // 検索実行時に URL を更新する処理をラップ
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // 検索キーワードが存在する場合、search ページに遷移
+    if (searchParams.keyword) {
+      // handle search を呼び出す（App.tsx 側で navigate が呼ばれるようになった）
+      handleSearch(e);
+    }
+  };
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
       <h1 className="text-4xl font-bold text-gray-900 mb-4">ヤフオク相場検索</h1>
@@ -40,7 +54,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
           searchParams={searchParams}
           setSearchParams={setSearchParams}
           searchHistory={searchHistory}
-          onSearch={handleSearch}
+          onSearch={handleSubmit}
           isLoading={isLoading}
         />
         {/* 詳細検索ボタン */}
