@@ -83,8 +83,8 @@ export const useAuctionSearch = () => {
       excludeTerms.push('送料無料', '送料込み');
     }
 
-    // APIエンドポイントを開発環境用に変更
-    return `http://localhost:3000/api/aucfree?keyword=${encodeURIComponent(searchKeyword)}&page=${page}&negative_keyword=${encodeURIComponent(excludeTerms.join(','))}&status=${encodeURIComponent(status)}&seller=${encodeURIComponent(sellerId)}&min=${encodeURIComponent(minPrice)}&max=${encodeURIComponent(maxPrice)}`;
+    // 本番環境のAPIエンドポイントを使用
+    return `https://revathis-api.vercel.app/api/aucfree?keyword=${encodeURIComponent(searchKeyword)}&page=${page}&negative_keyword=${encodeURIComponent(excludeTerms.join(','))}&status=${encodeURIComponent(status)}&seller=${encodeURIComponent(sellerId)}&min=${encodeURIComponent(minPrice)}&max=${encodeURIComponent(maxPrice)}`;
   };
 
   /**
