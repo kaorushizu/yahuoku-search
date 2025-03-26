@@ -57,7 +57,7 @@ const SelectedItemsPanel: React.FC<SelectedItemsPanelProps> = ({
   }, [hideSelectedItems]);
 
   return (
-    <div className="fixed top-20 right-6 bg-white rounded-lg shadow-lg p-4 max-w-xs w-full transition-all duration-300 z-50">
+    <div className="fixed top-20 left-6 bg-white rounded-lg shadow-lg p-4 max-w-xs w-full transition-all duration-300 z-50">
       <div className="mb-3">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-base font-semibold text-gray-900">選択した商品の統計</h3>
