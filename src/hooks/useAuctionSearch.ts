@@ -83,7 +83,8 @@ export const useAuctionSearch = () => {
       excludeTerms.push('送料無料', '送料込み');
     }
 
-    return `https://revathis-api.vercel.app/api/aucfree?keyword=${encodeURIComponent(searchKeyword)}&page=${page}&negative_keyword=${encodeURIComponent(excludeTerms.join(','))}&status=${encodeURIComponent(status)}&seller=${encodeURIComponent(sellerId)}&min=${encodeURIComponent(minPrice)}&max=${encodeURIComponent(maxPrice)}`;
+    // APIエンドポイントを開発環境用に変更
+    return `http://localhost:3000/api/aucfree?keyword=${encodeURIComponent(searchKeyword)}&page=${page}&negative_keyword=${encodeURIComponent(excludeTerms.join(','))}&status=${encodeURIComponent(status)}&seller=${encodeURIComponent(sellerId)}&min=${encodeURIComponent(minPrice)}&max=${encodeURIComponent(maxPrice)}`;
   };
 
   /**
@@ -104,7 +105,44 @@ export const useAuctionSearch = () => {
     resetSortOrder?: () => void
   ) => {
     e?.preventDefault();
-    if (!searchParams.keyword.trim()) return;
+    
+    // フォームイベントからキーワードと検索パラメータを直接取得できるか試みる
+    let keywordFromForm = '';
+    let searchParamsFromEvent = null;
+    
+    try {
+      const formEvent = e as any;
+      // キーワードを取得
+      if (formEvent.target?.elements?.keyword?.value) {
+        keywordFromForm = formEvent.target.elements.keyword.value.trim();
+      }
+      
+      // イベントに検索パラメータが直接含まれている場合（URLからの検索時）
+      if (formEvent.searchParams) {
+        searchParamsFromEvent = formEvent.searchParams;
+        console.log('イベントから検索パラメータを取得:', searchParamsFromEvent);
+      }
+    } catch (error) {
+      console.error('フォームデータ取得エラー:', error);
+    }
+    
+    // 検索に使用するパラメータ - イベントから取得したものを優先
+    const paramsToUse = searchParamsFromEvent || searchParams;
+    
+    // フォームから取得したキーワードがある場合は優先、なければパラメータのキーワードを使用
+    const effectiveKeyword = keywordFromForm || paramsToUse.keyword.trim();
+    
+    // 検索条件の判定：キーワードまたは他の検索条件（出品者ID、商品状態、価格範囲）が指定されている場合のみ検索
+    const hasSearchCriteria = 
+      effectiveKeyword !== '' || 
+      paramsToUse.sellerId !== '' || 
+      paramsToUse.status !== '' || 
+      paramsToUse.minPrice !== '' || 
+      paramsToUse.maxPrice !== '';
+    
+    if (!hasSearchCriteria) {
+      return;
+    }
 
     const isNewSearch = !newPage;
     
@@ -115,23 +153,35 @@ export const useAuctionSearch = () => {
     if (isNewSearch) {
       resetFilters?.();
       setResults([]);
-      setCurrentSearchKeyword(searchParams.keyword);
+      setCurrentSearchKeyword(effectiveKeyword);
       resetSelectedItems?.();
       resetSortOrder?.(); // ソート順もリセット
     }
 
+    // 検索パラメータを更新
     const updatedParams = {
-      ...searchParams,
+      ...paramsToUse,
+      keyword: effectiveKeyword, // フォームから取得したキーワードを優先
       page: isNewSearch ? 1 : (newPage || 1),
-      sellerId: isCompanyOnly ? 'myniw58319' : searchParams.sellerId,
+      sellerId: isCompanyOnly ? 'myniw58319' : paramsToUse.sellerId,
     };
     setSearchParams(updatedParams);
 
     try {
-      const response = await fetch(buildSearchUrl(updatedParams, filterOptions));
+      const searchUrl = buildSearchUrl(updatedParams, filterOptions);
+      console.log('API URL:', searchUrl);
+      
+      const response = await fetch(searchUrl);
+      
       if (!response.ok) throw new Error('検索中にエラーが発生しました');
       
       const data: ApiResponse = await response.json();
+      console.log('API検索結果:', { 
+        現在ページ: data.current_page,
+        総件数: data.items_total, 
+        ページ数: data.page_total, 
+        アイテム数: data.items.length 
+      });
       
       if (isNewSearch) {
         setResults(data.items);
@@ -140,12 +190,13 @@ export const useAuctionSearch = () => {
       }
       
       setTotalPages(data.page_total);
-      setTotalCount(data.total_count || data.items.length * data.page_total);
+      setTotalCount(data.items_total || data.items.length * data.page_total);
       
-      if (!searchHistory.includes(searchParams.keyword)) {
-        setSearchHistory(prev => [searchParams.keyword, ...prev.slice(0, 4)]);
+      if (!searchHistory.includes(effectiveKeyword)) {
+        setSearchHistory(prev => [effectiveKeyword, ...prev.slice(0, 4)]);
       }
     } catch (err) {
+      console.error('検索エラー:', err);
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
       setResults([]);
       setTotalCount(0);
@@ -183,7 +234,7 @@ export const useAuctionSearch = () => {
       const data: ApiResponse = await response.json();
       setResults(prev => [...prev, ...data.items]);
       setTotalPages(data.page_total);
-      setTotalCount(data.total_count || data.items.length * data.page_total);
+      setTotalCount(data.items_total || data.items.length * data.page_total);
       setSearchParams(updatedParams);
     } catch (err) {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');

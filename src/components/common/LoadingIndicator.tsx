@@ -29,8 +29,8 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
       text: 'text-sm'
     },
     large: {
-      spinner: 'h-10 w-10 border-4',
-      text: 'text-base'
+      spinner: 'h-16 w-16 border-4',
+      text: 'text-lg font-medium'
     }
   };
 
@@ -39,8 +39,8 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
 
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
-      <div className={`animate-spin rounded-full ${spinnerStyles} border-blue-100 border-t-blue-500 mb-2`}></div>
-      {text && <div className={`text-gray-600 ${textStyles}`}>{text}</div>}
+      <div className={`animate-spin rounded-full ${spinnerStyles} border-blue-200 border-t-blue-600 mb-3`}></div>
+      {text && <div className={`text-gray-700 ${textStyles}`}>{text}</div>}
     </div>
   );
 };

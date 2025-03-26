@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Header from '../common/Header';
 import ResultsContainer from './ResultsContainer';
 import SelectedItemsPanel from '../statistics/SelectedItemsPanel';
@@ -6,137 +7,268 @@ import HelpPage from '../HelpPage';
 import ScrollToTopButton from '../common/ScrollToTopButton';
 import { AuctionItem, FilterOptions, SearchParams, Statistics } from '../../types';
 import { ProductTag } from '../../types';
-
-interface ResultsPageProps {
-  // 検索関連
-  searchParams: SearchParams;
-  setSearchParams: React.Dispatch<React.SetStateAction<SearchParams>>;
-  currentSearchKeyword: string;
-  searchHistory: string[];
-  results: AuctionItem[];
-  filteredResults: AuctionItem[];
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  totalCount: number;
-  totalPages: number;
-  error: string | null;
-  isCompanyOnly: boolean;
-  setIsCompanyOnly: React.Dispatch<React.SetStateAction<boolean>>;
-  handleSearch: (e: React.FormEvent, newPage?: number, resetFunc?: () => void, clearFunc?: () => void, sortFunc?: () => void) => void;
-  getAuctionUrl: (id: string, endDate: string) => string;
-  loadMore: () => void;
-  
-  // 詳細検索・UI関連
-  isAdvancedSearch: boolean;
-  setIsAdvancedSearch: React.Dispatch<React.SetStateAction<boolean>>;
-  showHelp: boolean;
-  setShowHelp: React.Dispatch<React.SetStateAction<boolean>>;
-  layout: 'grid' | 'table';
-  setLayout: React.Dispatch<React.SetStateAction<'grid' | 'table'>>;
-  
-  // フィルター関連
-  filterOptions: FilterOptions;
-  setFilterOptions: React.Dispatch<React.SetStateAction<FilterOptions>>;
-  selectedTags: Set<string>;
-  setSelectedTags: React.Dispatch<React.SetStateAction<Set<string>>>;
-  filterKeyword: string;
-  setFilterKeyword: React.Dispatch<React.SetStateAction<string>>;
-  newFilterKeyword: string;
-  setNewFilterKeyword: React.Dispatch<React.SetStateAction<string>>;
-  newExcludeKeyword: string;
-  setNewExcludeKeyword: React.Dispatch<React.SetStateAction<string>>;
-  showTags: boolean;
-  setShowTags: React.Dispatch<React.SetStateAction<boolean>>;
-  toggleTagFilter: (keyword: string) => void;
-  resetAllFilters: () => void;
-  availableTags: { tag: ProductTag; count: number }[];
-  addFilterKeyword: () => void;
-  addExcludeKeyword: () => void;
-  getProductTags: (title: string) => ProductTag[];
-  setClearPriceRangeFilters: React.Dispatch<React.SetStateAction<() => void>>;
-  setHasPriceRangeFilter: React.Dispatch<React.SetStateAction<boolean>>;
-  hasPriceRangeFilter: boolean;
-  
-  // 選択アイテム関連
-  selectedItems: Set<string>;
-  showSelectedOnly: boolean;
-  setShowSelectedOnly: React.Dispatch<React.SetStateAction<boolean>>;
-  hideSelectedItems: boolean;
-  setHideSelectedItems: React.Dispatch<React.SetStateAction<boolean>>;
-  toggleItemSelection: (id: string) => void;
-  clearSelectedItems: () => void;
-  handleRangeSelection: (id: string, items: AuctionItem[], isTable: boolean) => void;
-  toggleSelectAll: (items: AuctionItem[]) => void;
-  
-  // 統計情報
-  statistics: Statistics;
-  selectedStatistics: Statistics;
-  
-  // フィルター状態
-  hasFilters: boolean;
-}
+import { useSearch } from '../../contexts/SearchContext';
+import { useFilter } from '../../contexts/FilterContext';
+import { useSelection } from '../../contexts/SelectionContext';
+import { useStatistics } from '../../hooks';
 
 /**
  * 検索結果を表示するページコンポーネント
  * ヘッダー、検索結果一覧、選択アイテムパネルなどを含む
  */
-const ResultsPage: React.FC<ResultsPageProps> = ({
-  searchParams,
-  setSearchParams,
-  currentSearchKeyword,
-  searchHistory,
-  results,
-  filteredResults,
-  isLoading,
-  isLoadingMore,
-  totalCount,
-  totalPages,
-  error,
-  isCompanyOnly,
-  setIsCompanyOnly,
-  handleSearch,
-  getAuctionUrl,
-  loadMore,
-  isAdvancedSearch,
-  setIsAdvancedSearch,
-  showHelp,
-  setShowHelp,
-  layout,
-  setLayout,
-  filterOptions,
-  setFilterOptions,
-  selectedTags,
-  setSelectedTags,
-  filterKeyword,
-  setFilterKeyword,
-  newFilterKeyword,
-  setNewFilterKeyword,
-  newExcludeKeyword,
-  setNewExcludeKeyword,
-  showTags,
-  setShowTags,
-  toggleTagFilter,
-  resetAllFilters,
-  availableTags,
-  addFilterKeyword,
-  addExcludeKeyword,
-  getProductTags,
-  setClearPriceRangeFilters,
-  setHasPriceRangeFilter,
-  hasPriceRangeFilter,
-  selectedItems,
-  showSelectedOnly,
-  setShowSelectedOnly,
-  hideSelectedItems,
-  setHideSelectedItems,
-  toggleItemSelection,
-  clearSelectedItems,
-  handleRangeSelection,
-  toggleSelectAll,
-  statistics,
-  selectedStatistics,
-  hasFilters
-}) => {
+const ResultsPage: React.FC = () => {
+  // 各コンテキストからデータを取得
+  const {
+    searchParams,
+    setSearchParams,
+    currentSearchKeyword,
+    searchHistory,
+    results,
+    isLoading,
+    isLoadingMore,
+    totalPages,
+    totalCount,
+    error,
+    isCompanyOnly,
+    setIsCompanyOnly,
+    getAuctionUrl,
+    handleSearch: originalHandleSearch,
+    loadMore: originalLoadMore
+  } = useSearch();
+  
+  const {
+    filterOptions,
+    setFilterOptions,
+    selectedTags,
+    setSelectedTags,
+    filterKeyword,
+    setFilterKeyword,
+    newFilterKeyword,
+    setNewFilterKeyword,
+    newExcludeKeyword,
+    setNewExcludeKeyword,
+    showTags,
+    setShowTags,
+    toggleTagFilter,
+    resetAllFilters,
+    availableTags,
+    addFilterKeyword,
+    addExcludeKeyword,
+    getProductTags,
+    filteredResults,
+    setClearPriceRangeFilters,
+    setHasPriceRangeFilter,
+    hasPriceRangeFilter
+  } = useFilter();
+  
+  const {
+    selectedItems,
+    showSelectedOnly,
+    setShowSelectedOnly,
+    toggleItemSelection,
+    clearSelectedItems,
+    handleRangeSelection,
+    toggleSelectAll,
+    selectedStatistics,
+    hideSelectedItems,
+    setHideSelectedItems,
+  } = useSelection();
+
+  // UI関連の状態
+  const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [layout, setLayout] = useState<'grid' | 'table'>('grid');
+  
+  // ナビゲーション関連
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // URLからの検索が実行されたかを追跡するref
+  const initialSearchExecutedRef = useRef(false);
+  const mountedRef = useRef(false);
+
+  // filteredResultsの統計情報を計算
+  const statistics = useStatistics(filteredResults);
+  
+  // URLからクエリパラメータを取得して検索を実行する（初回マウント時のみ）
+  useLayoutEffect(() => {
+    if (mountedRef.current) {
+      return; // 初回マウント後は実行しない
+    }
+    
+    mountedRef.current = true;
+    
+    const searchParams = new URLSearchParams(location.search);
+    const keyword = searchParams.get('keyword');
+    const minPrice = searchParams.get('min');
+    const maxPrice = searchParams.get('max');
+    const sellerId = searchParams.get('seller');
+    const status = searchParams.get('status');
+    const page = searchParams.get('page');
+    const excludeParam = searchParams.get('exclude');
+    
+    // 検索パラメータの初期設定
+    const updatedSearchParams: {[key: string]: any} = {};
+    if (keyword && keyword.trim() !== '') updatedSearchParams.keyword = keyword;
+    if (minPrice) updatedSearchParams.minPrice = minPrice;
+    if (maxPrice) updatedSearchParams.maxPrice = maxPrice;
+    if (sellerId) updatedSearchParams.sellerId = sellerId;
+    if (status) updatedSearchParams.status = status;
+    if (page && !isNaN(parseInt(page))) updatedSearchParams.page = parseInt(page);
+    if (excludeParam) updatedSearchParams.excludeKeywords = excludeParam.split(',').map(k => k.trim()).filter(Boolean);
+    
+    // パラメータがある場合、検索を実行
+    if (Object.keys(updatedSearchParams).length > 0 && !isLoading) {
+      // 検索パラメータを設定
+      setSearchParams(prev => ({ ...prev, ...updatedSearchParams }));
+      
+      // 検索実行条件：キーワードがある、またはセラーID/ステータス/価格範囲のいずれかが指定されている
+      const shouldExecuteSearch = 
+        (keyword && keyword.trim() !== '') || 
+        sellerId || 
+        status || 
+        minPrice || 
+        maxPrice;
+      
+      if (shouldExecuteSearch) {
+        // マイクロタスクとして検索を実行（レンダリングサイクルを確実に分離）
+        Promise.resolve().then(() => {
+          // 検索済みフラグを立てる
+          initialSearchExecutedRef.current = true;
+          
+          try {
+            // 重要: setSearchParamsでの更新を待たずに、直接パラメータを渡す
+            const updatedSearchParamsForSearch = {
+              ...searchParams,
+              keyword: keyword || '',
+              minPrice: minPrice || '',
+              maxPrice: maxPrice || '',
+              sellerId: sellerId || '',
+              status: status || '',
+              page: page ? parseInt(page) : 1,
+              excludeKeywords: excludeParam ? excludeParam.split(',').map(k => k.trim()).filter(Boolean) : []
+            };
+            
+            // フォームイベントをシミュレート - 追加のパラメータも含める
+            const mockFormEvent = {
+              preventDefault: () => {},
+              target: {
+                elements: {
+                  keyword: { value: keyword || '' }
+                }
+              },
+              // 検索パラメータを追加
+              searchParams: updatedSearchParamsForSearch
+            } as unknown as React.FormEvent;
+            
+            // 標準の検索フローで実行
+            handleSearchWithReset(mockFormEvent);
+          } catch (error) {
+            console.error('URLからの検索実行中にエラーが発生しました:', error);
+          }
+        });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 検索パラメーターが変わったらURLからの検索フラグをリセット
+  useEffect(() => {
+    if (!initialSearchExecutedRef.current) return;
+    
+    // フォームからの検索時にフラグをリセット
+    initialSearchExecutedRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.keyword]);
+
+  // コンテキスト間の連携を行うloadMore関数
+  const loadMore = useCallback(() => {
+    originalLoadMore(filterOptions, showSelectedOnly);
+  }, [originalLoadMore, filterOptions, showSelectedOnly]);
+
+  // 検索時にURLを更新する修正版handleSearch関数
+  const handleSearch = useCallback((e: React.FormEvent, newPage?: number, resetFunc?: () => void, clearFunc?: () => void, sortFunc?: () => void) => {
+    e.preventDefault();
+    
+    // 検索前にURLをすぐに更新することを禁止する（検索フラグを事前に設定）
+    initialSearchExecutedRef.current = true;
+    
+    // 新しいページが指定されていれば、ページネーションを更新
+    if (newPage) {
+      setSearchParams(prev => ({ ...prev, page: newPage }));
+    }
+    
+    // 検索を実行
+    originalHandleSearch(e, newPage, resetFunc, clearFunc, sortFunc);
+    
+    // 検索パラメータの判定 - いずれかのパラメータが設定されている場合にURLを更新
+    const hasSearchParams = 
+      (searchParams.keyword && searchParams.keyword.trim() !== '') || 
+      searchParams.minPrice || 
+      searchParams.maxPrice || 
+      searchParams.sellerId || 
+      searchParams.status || 
+      (searchParams.excludeKeywords && searchParams.excludeKeywords.length > 0);
+    
+    // いずれかの検索パラメータがある場合はURLを更新
+    if (hasSearchParams) {
+      // URLパラメータを構築
+      const urlParams = new URLSearchParams();
+      
+      // 基本検索パラメータの追加
+      if (searchParams.keyword && searchParams.keyword.trim() !== '') {
+        urlParams.set('keyword', searchParams.keyword.trim());
+      }
+      
+      // 詳細検索パラメータの追加
+      if (searchParams.minPrice) urlParams.set('min', searchParams.minPrice);
+      if (searchParams.maxPrice) urlParams.set('max', searchParams.maxPrice);
+      if (searchParams.sellerId) urlParams.set('seller', searchParams.sellerId);
+      if (searchParams.status) urlParams.set('status', searchParams.status);
+      if (searchParams.page > 1) urlParams.set('page', searchParams.page.toString());
+      if (searchParams.excludeKeywords && searchParams.excludeKeywords.length > 0) {
+        urlParams.set('exclude', searchParams.excludeKeywords.join(','));
+      }
+      
+      // ナビゲート（Replace: trueで履歴に残さない）
+      requestAnimationFrame(() => {
+        navigate(`/search?${urlParams.toString()}`, { replace: true });
+      });
+    }
+  }, [originalHandleSearch, searchParams, navigate, setSearchParams, initialSearchExecutedRef]);
+
+  // フィルター追加ヘルパー関数
+  const handleAddFilterKeyword = () => {
+    if (newFilterKeyword.trim()) {
+      addFilterKeyword(newFilterKeyword.trim());
+    }
+  };
+
+  const handleAddExcludeKeyword = () => {
+    if (newExcludeKeyword.trim()) {
+      addExcludeKeyword(newExcludeKeyword.trim());
+    }
+  };
+
+  // フィルターが適用されているかを確認する関数
+  const hasFilters = useCallback(() => {
+    return selectedTags.size > 0 || 
+      filterOptions.filterKeywords.length > 0 || 
+      filterOptions.excludeKeywords.length > 0 || 
+      filterOptions.excludeJunk || 
+      filterOptions.excludeMultipleBids || 
+      filterOptions.excludeNew || 
+      filterOptions.excludeSets || 
+      filterOptions.excludeFreeShipping ||
+      showSelectedOnly ||
+      hasPriceRangeFilter;
+  }, [
+    selectedTags, 
+    filterOptions, 
+    showSelectedOnly, 
+    hasPriceRangeFilter
+  ]);
+
   // 無限スクロール用のRef
   const observerTarget = useRef<HTMLDivElement>(null);
   
@@ -163,11 +295,14 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
     handleSearch(e, newPage, resetAllFilters, clearSelectedItems, resetSortOrder || undefined);
   };
 
-  // 無限スクロール用のIntersectionObserver
-  useEffect(() => {
-    // 無限スクロール機能は無効化（ボタンクリックで次のページを読み込む仕様に変更）
-    // 以前のIntersectionObserver実装を削除
-  }, []);
+  // デフォルトの統計情報
+  const defaultStats = {
+    median: 0,
+    average: 0,
+    min: 0,
+    max: 0,
+    priceRanges: []
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -202,7 +337,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
               isLoading={isLoading}
               error={error}
               currentSearchKeyword={searchParams.keyword}
-              statistics={statistics}
+              statistics={statistics || defaultStats}
               totalCount={totalCount}
               selectedItems={selectedItems}
               selectedTags={selectedTags}
@@ -224,8 +359,8 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
               toggleTagFilter={toggleTagFilter}
               resetAllFilters={resetAllFilters}
               availableTags={availableTags}
-              addFilterKeyword={addFilterKeyword}
-              addExcludeKeyword={addExcludeKeyword}
+              addFilterKeyword={handleAddFilterKeyword}
+              addExcludeKeyword={handleAddExcludeKeyword}
               getProductTags={getProductTags}
               getAuctionUrl={getAuctionUrl}
               layout={layout}
@@ -249,21 +384,30 @@ const ResultsPage: React.FC<ResultsPageProps> = ({
       {/* ページトップへ戻るボタン */}
       <ScrollToTopButton />
 
-      {/* 選択商品の統計情報パネル */}
+      {/* 選択アイテムパネル */}
       {selectedItems.size > 0 && (
         <SelectedItemsPanel
-          selectedStatistics={selectedStatistics}
-          selectedItemsCount={selectedItems.size}
-          clearSelectedItems={clearSelectedItems}
+          selectedItems={selectedItems}
           showSelectedOnly={showSelectedOnly}
           setShowSelectedOnly={setShowSelectedOnly}
           hideSelectedItems={hideSelectedItems}
           setHideSelectedItems={setHideSelectedItems}
+          toggleItemSelection={toggleItemSelection}
+          clearSelectedItems={clearSelectedItems}
+          selectedStatistics={selectedStatistics || defaultStats}
+          filteredResults={filteredResults}
+          getAuctionUrl={getAuctionUrl}
         />
       )}
 
       {/* ヘルプページ */}
-      {showHelp && <HelpPage onClose={() => setShowHelp(false)} />}
+      {showHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-11/12 max-w-4xl max-h-[85vh] overflow-y-auto">
+            <HelpPage onClose={() => setShowHelp(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

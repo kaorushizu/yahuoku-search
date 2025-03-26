@@ -1,16 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AuctionItem, ProductTag, SortOrder, Statistics } from '../../types';
-import ResultsList from './ResultsList';
-import StatisticsPanel from '../statistics/StatisticsPanel';
-import FilterPanel from '../filter/FilterPanel';
-import LoadingIndicator from '../common/LoadingIndicator';
-import { useStatistics } from '../../hooks/useStatistics';
-
-// 新しく作成したコンポーネントをインポート
-import PaginationControls from './PaginationControls';
-import EmptyResults from './EmptyResults';
-import ErrorDisplay from './ErrorDisplay';
-import PriceRangeFilters from './PriceRangeFilters';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AuctionItem, Statistics } from '../../types';
+import FilterWrapper from '../filter/FilterWrapper';
+import ResultsContent from './ResultsContent';
+import { useFilter } from '../../contexts/FilterContext';
+import { useStatistics } from '../../hooks';
 
 interface ResultsContainerProps {
   results: AuctionItem[];
@@ -39,10 +32,10 @@ interface ResultsContainerProps {
   setShowTags: React.Dispatch<React.SetStateAction<boolean>>;
   toggleTagFilter: (tagKeyword: string) => void;
   resetAllFilters: () => void;
-  availableTags: { tag: ProductTag; count: number }[];
+  availableTags: any[];
   addFilterKeyword: () => void;
   addExcludeKeyword: () => void;
-  getProductTags: (title: string) => ProductTag[];
+  getProductTags: (title: string) => any[];
   getAuctionUrl: (id: string, endDate: string) => string;
   layout: 'grid' | 'table';
   setLayout: React.Dispatch<React.SetStateAction<'grid' | 'table'>>;
@@ -59,19 +52,13 @@ interface ResultsContainerProps {
   onResetSortOrderChange?: (resetFunc: () => void) => void;
 }
 
-interface PriceRange {
-  min: number;
-  max: number;
-  range: string;
-}
-
 /**
  * 検索結果コンテナコンポーネント
- * 検索結果の表示、フィルタリング、統計情報表示を管理します
+ * フィルターパネルと結果リストを含む
  */
 const ResultsContainer: React.FC<ResultsContainerProps> = ({
   results,
-  filteredResults,
+  filteredResults: propFilteredResults,
   isLoading,
   error,
   currentSearchKeyword,
@@ -115,269 +102,139 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
   observerTarget,
   onResetSortOrderChange
 }) => {
-  const [sortOrder, setSortOrder] = useState<SortOrder>('none');
-  const [isTagsVisible, setIsTagsVisible] = useState(true);
-  const [isStatsVisible, setIsStatsVisible] = useState(true);
-  const [selectedPriceRanges, setSelectedPriceRanges] = useState<PriceRange[]>([]);
+  // FilterContextから取得
+  const {
+    togglePriceRangeFilter: contextTogglePriceRange,
+    priceRanges
+  } = useFilter();
+  
+  // フィルター済み結果の統計情報を計算
+  const filteredStats = useStatistics(propFilteredResults);
+  
+  // nullチェックを行い、Statistics型に変換
+  const currentStatistics: Statistics | undefined = filteredStats ? {
+    median: filteredStats.median,
+    average: filteredStats.average,
+    min: filteredStats.min,
+    max: filteredStats.max,
+    priceRanges: filteredStats.priceRanges
+  } : undefined;
 
-  // 価格範囲フィルター機能
-  const handlePriceRangeClick = (rangeStart: number, rangeEnd: number, rangeText: string) => {
-    // 同じ範囲がすでに選択されているか確認
-    const isAlreadySelected = selectedPriceRanges.some(
-      range => range.min === rangeStart && range.max === rangeEnd
-    );
+  // 価格範囲で手動フィルタリングした結果
+  const [priceFilteredResults, setPriceFilteredResults] = useState<AuctionItem[]>(propFilteredResults);
 
-    if (isAlreadySelected) {
-      // 同じ範囲をクリックした場合はその範囲のみを削除
-      const newRanges = selectedPriceRanges.filter(
-        range => !(range.min === rangeStart && range.max === rangeEnd)
-      );
-      setSelectedPriceRanges(newRanges);
-      
-      // 親コンポーネントに通知
-      if (setHasPriceRangeFilter) {
-        setHasPriceRangeFilter(newRanges.length > 0);
-      }
+  // 価格範囲フィルターが変更されたら商品リストを更新
+  useEffect(() => {
+    if (priceRanges.length > 0) {
+      console.log('手動価格フィルター適用:', priceRanges);
+      // 価格範囲フィルタリングを適用
+      const filtered = propFilteredResults.filter(item => {
+        const price = item.落札金額;
+        return priceRanges.some(range => 
+          price >= range.min && (range.max === Number.MAX_SAFE_INTEGER || price < range.max)
+        );
+      });
+      setPriceFilteredResults(filtered);
+      console.log(`フィルター後の商品数: ${filtered.length}/${propFilteredResults.length}`);
     } else {
-      // 新しい価格範囲を追加
-      const newRange: PriceRange = {
-        min: rangeStart,
-        max: rangeEnd,
-        range: rangeText
-      };
-      const newRanges = [...selectedPriceRanges, newRange];
-      setSelectedPriceRanges(newRanges);
-      
-      // 親コンポーネントに通知
-      if (setHasPriceRangeFilter) {
-        setHasPriceRangeFilter(true);
-      }
+      // 価格範囲フィルターがない場合は元の結果を使用
+      setPriceFilteredResults(propFilteredResults);
+    }
+  }, [priceRanges, propFilteredResults]);
+
+  // 価格範囲フィルターを適用する関数
+  const handleApplyPriceRange = (min: number, max: number, rangeText?: string) => {
+    console.log(`Applying price filter: ${min} - ${max}, ${rangeText || `${min}円〜${max}円`}`);
+    
+    // FilterContextのtogglePriceRangeFilterを呼び出し
+    if (contextTogglePriceRange) {
+      contextTogglePriceRange(min, max, rangeText || `${min}円〜${max}円`);
+    }
+    
+    // フィルターフラグを設定
+    if (setHasPriceRangeFilter) {
+      setHasPriceRangeFilter(true);
     }
   };
 
-  // 価格範囲でフィルタリングされた結果
-  const priceFilteredResults = selectedPriceRanges.length > 0
-    ? filteredResults.filter(item => {
-        const price = item.落札金額;
-        // いずれかの選択された価格範囲に該当する場合はtrue
-        return selectedPriceRanges.some(range => {
-          return price >= range.min && 
-                (range.max === Number.MAX_SAFE_INTEGER ? true : price < range.max);
-        });
-      })
-    : filteredResults;
-  
-  // ソート処理を追加
-  const sortedResults = useMemo(() => {
-    // 選択した商品のみ表示/非表示する場合のフィルタリング
-    let filteredBySelection = priceFilteredResults;
-    if (showSelectedOnly) {
-      filteredBySelection = priceFilteredResults.filter(item => selectedItems.has(item.オークションID));
-    } else if (hideSelectedItems) {
-      filteredBySelection = priceFilteredResults.filter(item => !selectedItems.has(item.オークションID));
-    }
+  // 価格範囲フィルターをクリアする関数
+  const handleClearPriceRange = () => {
+    console.log('Clearing price filter');
     
-    if (sortOrder === 'none') {
-      return filteredBySelection;
-    }
-    
-    return [...filteredBySelection].sort((a, b) => {
-      if (sortOrder === 'asc') {
-        return a.落札金額 - b.落札金額;
-      } else {
-        return b.落札金額 - a.落札金額;
+    // priceRangesをクリア（手動でフィルターを解除）
+    if (priceRanges && priceRanges.length > 0) {
+      for (const range of priceRanges) {
+        contextTogglePriceRange(range.min, range.max, range.label);
       }
-    });
-  }, [priceFilteredResults, sortOrder, showSelectedOnly, hideSelectedItems, selectedItems]);
-
-  // 現在表示されている結果に対して全選択を処理する関数
-  const handleToggleSelectAll = useCallback(() => {
-    toggleSelectAll(sortedResults);
-  }, [toggleSelectAll, sortedResults]);
-
-  // 現在表示されているアイテムの統計情報を計算
-  const currentStatistics = useStatistics(sortedResults);
-
-  // 価格範囲フィルターをクリア
-  const clearAllPriceRangeFilters = () => {
-    setSelectedPriceRanges([]);
+    }
     
-    // 親コンポーネントに通知
+    // フィルターフラグをオフにする
     if (setHasPriceRangeFilter) {
       setHasPriceRangeFilter(false);
     }
   };
-  
-  // 親コンポーネントにクリア関数を渡す
+
+  // setClearPriceRangeFiltersを更新
   useEffect(() => {
     if (setClearPriceRangeFilters) {
-      setClearPriceRangeFilters(() => clearAllPriceRangeFilters);
+      setClearPriceRangeFilters(() => handleClearPriceRange);
     }
   }, [setClearPriceRangeFilters]);
 
-  // フィルターが適用されているかどうかをチェックする関数
-  const hasAnyFilter = useCallback(() => {
-    return selectedPriceRanges.length > 0 || 
-           selectedTags.size > 0 || 
-           filterOptions.filterKeywords.length > 0 || 
-           filterOptions.excludeKeywords.length > 0 || 
-           filterOptions.excludeJunk || 
-           filterOptions.excludeMultipleBids || 
-           filterOptions.excludeNew || 
-           filterOptions.excludeSets || 
-           filterOptions.excludeFreeShipping ||
-           showSelectedOnly ||
-           hideSelectedItems;
-  }, [
-    selectedPriceRanges.length,
-    selectedTags.size,
-    filterOptions,
-    showSelectedOnly,
-    hideSelectedItems
-  ]);
+  // 複数選択のトグル関数
+  const handleToggleSelectAll = useCallback(() => {
+    toggleSelectAll(priceFilteredResults);
+  }, [toggleSelectAll, priceFilteredResults]);
 
-  // ソートをリセットする関数
-  const resetSortOrder = useCallback(() => {
-    setSortOrder('none');
-  }, []);
-  
-  // 親コンポーネントにソートリセット関数を提供
-  useEffect(() => {
-    if (onResetSortOrderChange) {
-      onResetSortOrderChange(resetSortOrder);
-    }
-  }, [onResetSortOrderChange, resetSortOrder]);
-
-  // 検索中のローディング表示
-  if (isLoading && results.length === 0) {
-    return (
-      <div className="flex flex-col justify-center items-center h-[calc(100vh-20rem)]">
-        <LoadingIndicator size="large" />
-      </div>
-    );
-  }
-
-  // エラーメッセージの表示
-  if (error) {
-    return <ErrorDisplay message={error} />;
-  }
-
-  // 検索結果がない場合
-  if (!isLoading && results.length === 0 && currentSearchKeyword) {
-    return <EmptyResults keyword={currentSearchKeyword} />;
-  }
-  
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 max-w-[1700px] mx-auto">
-      {/* サイドパネル（モバイルでは固定） */}
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      {/* サイドパネル - 左側（固定表示） */}
       <div className="md:col-span-1">
-        <div className="space-y-4 sticky top-20">
-          {results.length > 0 && (
-            <FilterPanel
-              filterOptions={filterOptions}
-              setFilterOptions={setFilterOptions}
-              filterKeyword={filterKeyword}
-              setFilterKeyword={setFilterKeyword}
-              newFilterKeyword={newFilterKeyword}
-              setNewFilterKeyword={setNewFilterKeyword}
-              newExcludeKeyword={newExcludeKeyword}
-              setNewExcludeKeyword={setNewExcludeKeyword}
-              showTags={showTags}
-              setShowTags={setShowTags}
-              selectedTags={selectedTags}
-              setSelectedTags={setSelectedTags}
-              toggleTagFilter={toggleTagFilter}
-              resetAllFilters={() => {
-                resetAllFilters();
-                clearAllPriceRangeFilters();
-              }}
-              availableTags={availableTags}
-              addFilterKeyword={addFilterKeyword}
-              addExcludeKeyword={addExcludeKeyword}
-              isTagsVisible={isTagsVisible}
-              setIsTagsVisible={setIsTagsVisible}
-              resultsCount={results.length}
-              filteredResultsCount={filteredResults.length}
-            />
-          )}
-
-          {/* 統計情報パネル (サイドバー) */}
-          {results.length > 0 && statistics && (
-            <StatisticsPanel
-              statistics={statistics}
-              currentStatistics={currentStatistics}
-              isCompact={true}
-              isVisible={isStatsVisible}
-              onToggleVisibility={() => setIsStatsVisible(!isStatsVisible)}
-              onPriceRangeClick={handlePriceRangeClick}
-              selectedPriceRanges={selectedPriceRanges}
-              hasActiveFilters={hasAnyFilter()}
-              hasActivePriceFilters={selectedPriceRanges.length > 0}
-              onClearAllPriceRanges={clearAllPriceRangeFilters}
-            />
-          )}
-          
-          {/* 価格範囲フィルター表示 */}
-          <PriceRangeFilters
-            selectedPriceRanges={selectedPriceRanges}
-            setSelectedPriceRanges={setSelectedPriceRanges}
-            clearAllPriceRangeFilters={clearAllPriceRangeFilters}
+        <div className="sticky top-20 max-h-[calc(100vh-5rem)] overflow-y-auto pb-4">
+          <FilterWrapper
+            statistics={statistics}
+            currentStatistics={currentStatistics}
+            showTags={showTags}
+            setShowTags={setShowTags}
+            resetAllFilters={resetAllFilters}
+            onApplyPriceRange={handleApplyPriceRange}
+            onClearPriceRange={handleClearPriceRange}
+            hasPriceRangeFilter={hasPriceRangeFilter}
+            totalResultsCount={results.length}
             filteredResultsCount={priceFilteredResults.length}
-            totalResultsCount={filteredResults.length}
           />
         </div>
       </div>
 
-      {/* メインコンテンツエリア */}
+      {/* 検索結果リスト - 右側（スクロール可能） */}
       <div className="md:col-span-4">
-        {results.length > 0 && (
-          <div className="space-y-4">
-            {/* 統計情報パネル (デスクトップ) - モバイルでは非表示 */}
-            {statistics && (
-              <div className="hidden md:block">
-                <StatisticsPanel 
-                  statistics={statistics}
-                  currentStatistics={currentStatistics}
-                  onPriceRangeClick={handlePriceRangeClick}
-                  selectedPriceRanges={selectedPriceRanges}
-                  hasActiveFilters={hasAnyFilter()}
-                  hasActivePriceFilters={selectedPriceRanges.length > 0}
-                  onClearAllPriceRanges={clearAllPriceRangeFilters}
-                />
-              </div>
-            )}
-
-            {/* 検索結果リスト */}
-            <ResultsList
-              filteredResults={sortedResults}
-              layout={layout}
-              sortOrder={sortOrder}
-              setSortOrder={setSortOrder}
-              selectedItems={selectedItems}
-              toggleItemSelection={toggleItemSelection}
-              handleRangeSelection={handleRangeSelection}
-              getProductTags={getProductTags}
-              getAuctionUrl={getAuctionUrl}
-              setLayout={setLayout}
-              toggleSelectAll={handleToggleSelectAll}
-              statistics={{
-                medianPrice: statistics.median
-              }}
-            />
-
-            {/* ページネーションコントロール */}
-            {results.length > 0 && !isLoading && (
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                isLoading={isLoading}
-                isLoadingMore={isLoadingMore}
-                loadMore={loadMore}
-                observerTarget={observerTarget}
-              />
-            )}
-          </div>
-        )}
+        <ResultsContent
+          results={results}
+          filteredResults={priceFilteredResults}
+          isLoading={isLoading}
+          error={error}
+          currentSearchKeyword={currentSearchKeyword}
+          statistics={statistics}
+          totalCount={totalCount}
+          selectedItems={selectedItems}
+          toggleItemSelection={toggleItemSelection}
+          handleRangeSelection={handleRangeSelection}
+          toggleSelectAll={handleToggleSelectAll}
+          clearSelectedItems={clearSelectedItems}
+          getAuctionUrl={getAuctionUrl}
+          getProductTags={getProductTags}
+          layout={layout}
+          setLayout={setLayout}
+          isLoadingMore={isLoadingMore}
+          loadMore={loadMore}
+          showSelectedOnly={showSelectedOnly}
+          hideSelectedItems={hideSelectedItems}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          observerTarget={observerTarget}
+          onResetSortOrderChange={onResetSortOrderChange}
+          onPriceRangeClick={handleApplyPriceRange}
+        />
       </div>
     </div>
   );

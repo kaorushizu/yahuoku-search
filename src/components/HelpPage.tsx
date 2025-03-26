@@ -52,11 +52,34 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                 </h3>
                 <div className="space-y-2 text-gray-600">
                   <p>以下のショートカットキーを使用して操作を効率化できます：</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li><span className="font-semibold">Ctrl+S</span>（またはMacの場合は<span className="font-semibold">Command+S</span>）: 検索ボックスにフォーカスを移動</li>
-                    <li>フォーカス移動時に自動的に検索ボックス内のテキストが全選択されます</li>
-                    <li>日本語入力中はEnterキーの処理が最適化され、変換確定後に誤って検索が実行されることを防止します</li>
-                  </ul>
+                  <div className="bg-gray-50 rounded-lg p-4 mt-2">
+                    <p className="text-sm font-medium text-gray-700 mb-2">グローバルショートカット:</p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      <li><span className="font-semibold">「Ctrl+S」</span>または<span className="font-semibold">「Command+S」</span>(Mac): 検索ボックスにフォーカスを移動</li>
+                      <li>フォーカス移動時に自動的に検索ボックス内のテキストが全選択されます</li>
+                      <li>日本語入力中はEnterキーの処理が最適化され、変換確定後に誤って検索が実行されることを防止します</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4 mt-3">
+                    <p className="text-sm font-medium text-gray-700 mb-2">商品詳細表示でのショートカット:</p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      <li><span className="font-semibold">「a」</span>または<span className="font-semibold">「←」</span>キー: 前の画像に移動</li>
+                      <li><span className="font-semibold">「s」</span>または<span className="font-semibold">「→」</span>キー: 次の画像に移動</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4 mt-3">
+                    <p className="text-sm font-medium text-gray-700 mb-2">画像拡大表示でのショートカット:</p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      <li><span className="font-semibold">「a」</span>または<span className="font-semibold">「←」</span>キー: 前の画像に移動</li>
+                      <li><span className="font-semibold">「s」</span>または<span className="font-semibold">「→」</span>キー: 次の画像に移動</li>
+                      <li><span className="font-semibold">「w」</span>または<span className="font-semibold">「↓」</span>キー: 拡大ビューを閉じる</li>
+                      <li><span className="font-semibold">「スペース」</span>キー: 画像の拡大/縮小を切り替え</li>
+                    </ul>
+                  </div>
+                  
+                  <p className="mt-2 text-sm">※ショートカットキーは各モードや表示で左上のキーボードアイコンにカーソルを合わせると確認できます。</p>
                 </div>
               </section>
 
@@ -147,9 +170,7 @@ export default function HelpPage({ onClose }: HelpPageProps) {
                     <li><span className="font-semibold">グリッド表示</span>: 商品カードの右上のチェックマークをクリックして選択</li>
                     <li><span className="font-semibold">テーブル表示</span>: 行のチェックボックスをクリックして選択、テーブルヘッダーのチェックボックスで全選択</li>
                     <li>選択した商品の統計情報が画面左上に表示されます</li>
-                    <li>「選択した商品のみ表示」ボタンで選択商品だけを表示できます</li>
-                    <li>Shiftキーを押しながら別の商品を選択すると、範囲選択ができます</li>
-                    <li>クリアボタンで選択をリセットできます</li>
+                    
                   </ul>
                 </div>
               </section>

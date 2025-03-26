@@ -1,39 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import SearchForm from './SearchForm';
 import AdvancedSearchPanel from './AdvancedSearchPanel';
-import { SearchParams } from '../../types';
-
-interface SearchPageProps {
-  searchParams: SearchParams;
-  setSearchParams: React.Dispatch<React.SetStateAction<SearchParams>>;
-  searchHistory: string[];
-  isLoading: boolean;
-  isCompanyOnly: boolean;
-  setIsCompanyOnly: React.Dispatch<React.SetStateAction<boolean>>;
-  isAdvancedSearch: boolean;
-  setIsAdvancedSearch: React.Dispatch<React.SetStateAction<boolean>>;
-  handleSearch: (e: React.FormEvent, newPage?: number) => void;
-}
+import { useSearch } from '../../contexts/SearchContext';
 
 /**
  * 初期画面の検索ページコンポーネント
  * 検索フォームと詳細検索パネルを含む
  */
-const SearchPage: React.FC<SearchPageProps> = ({
-  searchParams,
-  setSearchParams,
-  searchHistory,
-  isLoading,
-  isCompanyOnly,
-  setIsCompanyOnly,
-  isAdvancedSearch,
-  setIsAdvancedSearch,
-  handleSearch
-}) => {
+const SearchPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
+  
+  // コンテキストからデータを取得
+  const {
+    searchParams,
+    setSearchParams,
+    searchHistory,
+    isLoading,
+    isCompanyOnly,
+    setIsCompanyOnly,
+    handleSearch: originalHandleSearch,
+  } = useSearch();
   
   // 検索実行時に URL を更新する処理をラップ
   const handleSubmit = (e: React.FormEvent) => {
@@ -50,8 +40,11 @@ const SearchPage: React.FC<SearchPageProps> = ({
         return;
       }
       
-      // handle search を呼び出す（App.tsx 側で navigate が呼ばれるようになった）
-      handleSearch(e);
+      // 検索実行
+      originalHandleSearch(e);
+      
+      // 検索結果ページに遷移
+      navigate(`/search?keyword=${encodeURIComponent(searchParams.keyword)}`);
     }
   };
   

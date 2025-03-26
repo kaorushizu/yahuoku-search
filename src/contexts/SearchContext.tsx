@@ -87,6 +87,21 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
         clearPriceRangeFilters();
       }
       
+      // 検索キーワードがフォームイベントから取得できる場合は優先する
+      // これにより、状態更新の遅延による問題を回避
+      try {
+        const formEvent = e as any;
+        if (formEvent.target?.elements?.keyword?.value) {
+          const keywordFromForm = formEvent.target.elements.keyword.value;
+          // 検索キーワードを即時更新（非同期の状態更新を待たない）
+          if (keywordFromForm !== searchParams.keyword) {
+            setSearchParams(prev => ({ ...prev, keyword: keywordFromForm }));
+          }
+        }
+      } catch (error) {
+        console.error('フォームデータ取得エラー', error);
+      }
+      
       // フィルタリングオプションは後からFilterContextから取得するため、ここでは空のオブジェクトを渡す
       const emptyFilterOptions: FilterOptions = {
         filterKeywords: [],
@@ -101,7 +116,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
       
       originalHandleSearch(e, emptyFilterOptions, newPage, resetFilterFunc, clearSelectedFunc, resetSortOrderFunc);
     },
-    [originalHandleSearch, clearPriceRangeFilters]
+    [originalHandleSearch, clearPriceRangeFilters, searchParams.keyword, setSearchParams]
   );
 
   // loadMoreをラップして、フィルター状態と選択状態を考慮

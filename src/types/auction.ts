@@ -16,10 +16,10 @@ export interface AuctionItem {
  * ページネーション情報と商品リストを含む
  */
 export interface ApiResponse {
-  page: number;           // 現在のページ番号
-  page_total: number;     // 全体のページ数
-  items: AuctionItem[];   // 商品データの配列
-  total_count?: number;   // 検索結果の総件数（オプショナル）
+  current_page: number;     // 現在のページ番号
+  page_total: number;       // 全体のページ数
+  items: AuctionItem[];     // 商品データの配列
+  items_total: number;      // 検索結果の総件数
 }
 
 /**

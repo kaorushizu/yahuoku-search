@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ExternalLink, Package2, Calendar, Tag, BarChart4, ShoppingBag, Clock, Info, ZoomIn, ZoomOut, Image, DollarSign, PlusCircle, Users, Eye, Percent, FileText, Folder, Flag, Award, TrendingDown, TrendingUp, ArrowRight } from 'lucide-react';
+import { X, ExternalLink, Package2, Calendar, Tag, BarChart4, ShoppingBag, Clock, Info, ZoomIn, ZoomOut, Image, DollarSign, PlusCircle, Users, Eye, Percent, FileText, Folder, Flag, Award, TrendingDown, TrendingUp, ArrowRight, Keyboard, Clipboard, Copy } from 'lucide-react';
 import { AuctionItem, ProductTag, ProductDetailResponse } from '../../types';
 
 // Swiperのインポート
@@ -129,6 +129,9 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [copiedCategoryId, setCopiedCategoryId] = useState(false);
   const [copiedAuctionId, setCopiedAuctionId] = useState(false);
+  const [copiedInventoryData, setCopiedInventoryData] = useState(false);
+  const [showShortcutTooltip, setShowShortcutTooltip] = useState(false);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
   const resizerRef = useRef<HTMLDivElement>(null);
   const isMobile = useRef(window.innerWidth < 768).current;
 
@@ -146,6 +149,7 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
       setActiveIndex(0);
       setCopiedCategoryId(false);
       setCopiedAuctionId(false);
+      setCopiedInventoryData(false);
     }
   }, [isOpen]);
 
@@ -213,14 +217,16 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
             break;
           case ' ':
             // スペースキーで拡大/縮小を切り替え
-            const zoomContainer = document.querySelector('.swiper-zoom-container');
-            if (zoomContainer) {
-              const isZoomed = zoomContainer.classList.contains('zoomed');
-              if (isZoomed) {
-                zoomSwiper.zoom.out();
-              } else {
-                zoomSwiper.zoom.in();
-              }
+            e.preventDefault(); // スクロールを防止
+            
+            if (isImageZoomed) {
+              // 縮小
+              zoomSwiper.zoom.out();
+              setIsImageZoomed(false);
+            } else {
+              // 拡大
+              zoomSwiper.zoom.in();
+              setIsImageZoomed(true);
             }
             break;
         }
@@ -242,25 +248,55 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, showZoom, zoomSwiper, mainSwiper]);
+  }, [isOpen, showZoom, zoomSwiper, mainSwiper, isImageZoomed]);
 
   // クリップボードにコピーする関数
-  const copyToClipboard = (text: string, type: 'category' | 'auction') => {
+  const copyToClipboard = (text: string, type: 'category' | 'auction' | 'inventory') => {
     navigator.clipboard.writeText(text).then(() => {
       if (type === 'category') {
         setCopiedCategoryId(true);
         setTimeout(() => {
           setCopiedCategoryId(false);
         }, 1000);
-      } else {
+      } else if (type === 'auction') {
         setCopiedAuctionId(true);
         setTimeout(() => {
           setCopiedAuctionId(false);
+        }, 1000);
+      } else if (type === 'inventory') {
+        setCopiedInventoryData(true);
+        setTimeout(() => {
+          setCopiedInventoryData(false);
         }, 1000);
       }
     }).catch(err => {
       console.error('クリップボードへのコピーに失敗しました', err);
     });
+  };
+
+  // 在庫管理表用のデータをコピーする関数
+  const copyInventoryData = () => {
+    // カテゴリIDの取得（最後のカテゴリIDを使用）
+    let categoryId = "";
+    if (productDetail?.categories && productDetail.categories.length > 1) {
+      categoryId = productDetail.categories[productDetail.categories.length - 1].id.toString();
+    }
+    
+    // タブ区切りのデータを作成
+    // ["​ヤフオク",${商品名},0,1,"",${落札金額},"",${カテゴリID}]
+    const inventoryData = [
+      "ヤフオク",
+      title,
+      "0",
+      "1",
+      "",
+      price.toString(),
+      "",
+      categoryId
+    ].join("\t");
+    
+    // クリップボードにコピー
+    copyToClipboard(inventoryData, 'inventory');
   };
 
   // 商品状態に応じた色クラスを返す
@@ -345,47 +381,98 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
   // 画像拡大ビューを閉じる
   const closeZoomView = () => {
     setShowZoom(false);
+    setIsImageZoomed(false); // 拡大状態もリセット
   };
+
+  // shortcutInfoコンポーネントを実装
+  const ShortcutInfo = () => (
+    <div className="relative">
+      <button
+        className="text-gray-400 hover:text-gray-600 transition-colors"
+        onMouseEnter={() => setShowShortcutTooltip(true)}
+        onMouseLeave={() => setShowShortcutTooltip(false)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowShortcutTooltip(!showShortcutTooltip);
+        }}
+        aria-label="ショートカットキー"
+      >
+        <Keyboard size={16} />
+      </button>
+      
+      {showShortcutTooltip && (
+        <div className="absolute left-full top-0 mt-6 ml-1 w-64 bg-white p-3 rounded-md shadow-lg text-xs border border-gray-200 z-[100]">
+          <div className="font-semibold mb-1.5 text-gray-700">ショートカットキー:</div>
+          <div className="space-y-1.5">
+            {showZoom ? (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">前の画像:</span>
+                  <span className="font-mono bg-gray-100 px-1.5 rounded">「a」or「←」キー</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">次の画像:</span>
+                  <span className="font-mono bg-gray-100 px-1.5 rounded">「s」or「→」キー</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">拡大ビューを閉じる:</span>
+                  <span className="font-mono bg-gray-100 px-1.5 rounded">「w」or「↓」キー</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">拡大/縮小:</span>
+                  <span className="font-mono bg-gray-100 px-1.5 rounded">「スペース」キー</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">前の画像:</span>
+                  <span className="font-mono bg-gray-100 px-1.5 rounded">「a」or「←」キー</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">次の画像:</span>
+                  <span className="font-mono bg-gray-100 px-1.5 rounded">「s」or「→」キー</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <>
-      {/* オーバーレイ */}
-      <div 
-        className="fixed inset-0 bg-black/50 z-50"
+      {/* ドロワーの背景オーバーレイ */}
+      <div className="fixed inset-0 bg-black bg-opacity-70 z-50 transition-opacity" 
+        style={{ opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none' }}
         onClick={onClose}
-      />
-      
-      {/* ドロワー */}
-      <div 
-        className={`fixed right-0 top-0 h-full bg-white shadow-lg z-50 overflow-y-auto overscroll-contain transition-transform duration-300 transform ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        } ${isDragging ? 'transition-none' : ''}`}
-        style={{ width: isMobile ? '100%' : `${drawerWidth}px` }}
-        onWheel={(e) => {
-          e.stopPropagation();
-        }}
-        onTouchStart={(e) => {
-          e.stopPropagation();
-        }}
       >
-        {/* リサイザー - モバイルでは非表示 */}
-        {!isMobile && (
-          <div 
-            ref={resizerRef}
-            className={`absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize z-[51] ${
-              isDragging ? 'bg-blue-100' : 'hover:bg-gray-100'
-            }`}
-          >
-            <div className="h-full flex items-center justify-center">
-              <div className="w-0.5 h-16 bg-gray-400 rounded-full"></div>
-            </div>
-          </div>
-        )}
+        {/* ドロワー本体 */}
+        <div
+          className="absolute right-0 top-0 bottom-0 bg-white overflow-hidden flex flex-col transition-all transform"
+          style={{ 
+            width: `${isMobile ? '100%' : `${drawerWidth}px`}`, 
+            transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+            boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.1)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* リサイザー */}
+          {!isMobile && (
+            <div
+              ref={resizerRef}
+              className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 z-10"
+            />
+          )}
 
-        {/* コンテンツコンテナ - 常にフレックスレイアウトで表示 */}
-        <div className="flex flex-col h-full">
-          {/* コンテンツエリア - 高さを伸ばしてスクロール可能に */}
-          <div className="flex-grow overflow-y-auto overscroll-contain pl-6 pr-4 py-4">
+          {/* コンテンツコンテナ - 高さを伸ばしてスクロール可能に */}
+          <div className="flex-grow overflow-y-auto overscroll-contain pl-6 pr-4 py-6">
+            {/* 閉じるボタンを削除し、ショートカットアイコンのみ左上に残す */}
+            <div className="absolute top-3 left-6 z-10">
+              <ShortcutInfo />
+            </div>
+            
             {isLoading ? (
               // ローディング表示
               <div className="flex justify-center items-center h-64">
@@ -763,9 +850,9 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
           </div>
           
           {/* 外部リンクボタン - 下部に固定（常に表示） */}
-          <div className="sticky bottom-0 left-0 right-0 pl-6 pr-4 pt-2 pb-8 bg-white border-t mt-auto">
+          <div className="sticky bottom-0 left-0 right-0 pl-6 pr-4 pt-2 pb-4 bg-white border-t mt-auto">
             <div className="flex gap-2">
-              {/* 閉じるボタン - 常に表示 */}
+              {/* 閉じるボタン */}
               <button
                 onClick={onClose}
                 className="w-1/3 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm"
@@ -774,15 +861,31 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                 閉じる
               </button>
               
-              {/* オークションページで見るボタン - 常に表示 */}
+              {/* 在庫管理表用コピーボタン */}
+              <div className="relative w-1/3">
+                <button
+                  onClick={copyInventoryData}
+                  className="w-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm"
+                >
+                  <Copy size={16} />
+                  コピー（在庫管理表用）
+                </button>
+                {copiedInventoryData && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
+                    コピーしました
+                  </div>
+                )}
+              </div>
+              
+              {/* オークションページで見るボタン */}
               <a 
                 href={auctionId ? (isAucfree ? `https://aucfree.com/items/${auctionId}` : `https://auctions.yahoo.co.jp/jp/auction/${auctionId}`) : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`w-2/3 ${!auctionId ? 'opacity-50 pointer-events-none' : ''} bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm`}
+                className={`w-1/3 ${!auctionId ? 'opacity-50 pointer-events-none' : ''} bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm`}
               >
                 <ExternalLink size={16} />
-                {isAucfree ? 'オークフリーで見る' : 'オークションページで見る'}
+                {isAucfree ? 'オークフリーで見る' : 'Yahooオークション'}
               </a>
             </div>
           </div>
@@ -818,6 +921,18 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                 <ZoomOut size={24} />
               </button>
               
+              {/* ショートカットキー情報 - 左上に小さく表示 */}
+              <div className="absolute left-4 top-4 z-[70] text-white/60 text-xs flex flex-col gap-1 bg-black/40 px-3 py-2 rounded">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Keyboard size={12} />
+                  <span className="font-semibold">ショートカット:</span>
+                </div>
+                <span>「a」or「←」キー: 前へ</span>
+                <span>「s」or「→」キー: 次へ</span>
+                <span>「w」or「↓」キー: 閉じる</span>
+                <span>「スペース」キー: 拡大/縮小</span>
+              </div>
+
               {/* 拡大表示スライダー */}
               <Swiper
                 modules={[Navigation, Pagination, Zoom, Thumbs]}

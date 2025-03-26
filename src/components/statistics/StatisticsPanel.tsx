@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calculator, ChevronDown, ChevronUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, Rectangle, TooltipProps } from 'recharts';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
@@ -57,6 +57,27 @@ const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
   maxWidth,
   onClearAllPriceRanges
 }) => {
+  // モバイル判定のためのstate
+  const [isMobile, setIsMobile] = useState(false);
+
+  // レスポンシブ対応：画面幅の変更を監視
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768); // 768px未満をモバイルとみなす
+    };
+
+    // 初期チェック
+    checkIfMobile();
+
+    // リサイズイベントリスナーを追加
+    window.addEventListener('resize', checkIfMobile);
+
+    // クリーンアップ
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
+
   const handleBarClick = (data: any) => {
     if (!onPriceRangeClick) return;
     
@@ -156,23 +177,32 @@ const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
     );
   }
 
+  // モバイル表示の場合は何も表示しない
+  if (isMobile) {
+    return null;
+  }
+
   // メイン表示（グラフ付き）
   return (
     <div className="bg-white rounded-lg shadow p-3">
-      {renderStats()}
-      {/* 価格分布グラフ */}
-      <div className="mt-4">
+      <div className="relative">
+        {renderStats()}
+        
         {/* 選択したフィルターをクリアするボタン */}
         {selectedPriceRanges && selectedPriceRanges.length > 0 && onClearAllPriceRanges && (
-          <div className="flex justify-end mb-2">
+          <div className="absolute top-0 right-0">
             <button 
               onClick={onClearAllPriceRanges}
-              className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
+              className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded shadow-sm"
             >
-              選択した価格範囲をクリア
+              価格範囲をクリア
             </button>
           </div>
         )}
+      </div>
+      
+      {/* 価格分布グラフ */}
+      <div className="mt-4">
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={statistics.priceRanges} barGap={0} barCategoryGap={1}>
