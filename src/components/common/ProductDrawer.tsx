@@ -861,28 +861,30 @@ const ProductDrawer: React.FC<ProductDrawerProps> = ({
                 閉じる
               </button>
               
-              {/* 在庫管理表用コピーボタン */}
-              <div className="relative w-1/3">
-                <button
-                  onClick={copyInventoryData}
-                  className="w-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm"
-                >
-                  <Copy size={16} />
-                  コピー（在庫管理表用）
-                </button>
-                {copiedInventoryData && (
-                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
-                    コピーしました
-                  </div>
-                )}
-              </div>
+              {/* 在庫管理表用コピーボタン - モバイル時は非表示 */}
+              {!isMobile && (
+                <div className="relative w-1/3">
+                  <button
+                    onClick={copyInventoryData}
+                    className="w-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm"
+                  >
+                    <Copy size={16} />
+                    コピー（在庫管理表用）
+                  </button>
+                  {copiedInventoryData && (
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-100 transition-opacity duration-300">
+                      コピーしました
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* オークションページで見るボタン */}
               <a 
                 href={auctionId ? (isAucfree ? `https://aucfree.com/items/${auctionId}` : `https://auctions.yahoo.co.jp/jp/auction/${auctionId}`) : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`w-1/3 ${!auctionId ? 'opacity-50 pointer-events-none' : ''} bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm`}
+                className={`${isMobile ? 'w-2/3' : 'w-1/3'} ${!auctionId ? 'opacity-50 pointer-events-none' : ''} bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-3 rounded flex items-center justify-center gap-1 text-sm`}
               >
                 <ExternalLink size={16} />
                 {isAucfree ? 'オークフリーで見る' : 'Yahooオークション'}
