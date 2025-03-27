@@ -258,7 +258,7 @@ const FilterWrapper: React.FC<FilterWrapperProps> = ({
       {/* 統計情報パネル (サイドバー) - 常に元の統計情報を表示 */}
       {totalResultsCount > 0 && originalStatistics && (
         <StatisticsPanel
-          statistics={originalStatistics}
+          statistics={priceRanges.length > 0 ? originalStatistics : (currentStatistics || originalStatistics)}
           isCompact={true}
           isVisible={isStatsVisible}
           onToggleVisibility={() => setIsStatsVisible(!isStatsVisible)}

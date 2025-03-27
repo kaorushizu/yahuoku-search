@@ -108,18 +108,15 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
     priceRanges
   } = useFilter();
   
-  // フィルター済み結果の統計情報を計算
-  const filteredStats = useStatistics(propFilteredResults);
+  // デフォルトの統計情報
+  const defaultStats: Statistics = {
+    median: 0,
+    average: 0,
+    min: 0,
+    max: 0,
+    priceRanges: []
+  };
   
-  // nullチェックを行い、Statistics型に変換
-  const currentStatistics: Statistics | undefined = filteredStats ? {
-    median: filteredStats.median,
-    average: filteredStats.average,
-    min: filteredStats.min,
-    max: filteredStats.max,
-    priceRanges: filteredStats.priceRanges
-  } : undefined;
-
   // 価格範囲で手動フィルタリングした結果
   const [priceFilteredResults, setPriceFilteredResults] = useState<AuctionItem[]>(propFilteredResults);
 
@@ -142,9 +139,47 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
     }
   }, [priceRanges, propFilteredResults]);
 
+  // 実際に表示される商品リスト（選択アイテムによる絞り込みも含む）
+  const displayResults = React.useMemo(() => {
+    return priceFilteredResults.filter(item => {
+      // 選択商品のみ表示モードの場合
+      if (showSelectedOnly) {
+        return selectedItems.has(item.オークションID);
+      }
+      // 選択商品を非表示モードの場合
+      if (hideSelectedItems) {
+        return !selectedItems.has(item.オークションID);
+      }
+      // どちらでもない場合は全て表示
+      return true;
+    });
+  }, [priceFilteredResults, showSelectedOnly, hideSelectedItems, selectedItems]);
+
+  // 実際に表示されている商品に基づいた統計情報を計算
+  const displayResultsStats = useStatistics(displayResults);
+  
+  // 表示統計情報の整形
+  const displayStatistics = displayResultsStats || defaultStats;
+
+  // 価格範囲フィルター適用時の統計情報スナップショットを保持
+  const [priceFilterSnapshot, setPriceFilterSnapshot] = useState<Statistics | null>(null);
+
+  // フィルターがクリアされたときにスナップショットもクリア
+  useEffect(() => {
+    if (priceRanges.length === 0) {
+      setPriceFilterSnapshot(null);
+    }
+  }, [priceRanges.length]);
+
   // 価格範囲フィルターを適用する関数
   const handleApplyPriceRange = (min: number, max: number, rangeText?: string) => {
     console.log(`Applying price filter: ${min} - ${max}, ${rangeText || `${min}円〜${max}円`}`);
+    
+    // 初回のフィルター適用時に現在の統計情報のスナップショットを保存
+    if (priceRanges.length === 0) {
+      console.log('Saving current statistics snapshot for price filter');
+      setPriceFilterSnapshot(displayStatistics);
+    }
     
     // FilterContextのtogglePriceRangeFilterを呼び出し
     if (contextTogglePriceRange) {
@@ -186,14 +221,20 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
     toggleSelectAll(priceFilteredResults);
   }, [toggleSelectAll, priceFilteredResults]);
 
+  // 現在表示すべき統計情報を決定
+  // 価格範囲フィルターが適用されている場合はスナップショットを使用
+  const currentDisplayStatistics = priceRanges.length > 0 && priceFilterSnapshot 
+    ? priceFilterSnapshot 
+    : displayStatistics;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
       {/* サイドパネル - 左側（固定表示） */}
       <div className="md:col-span-1">
         <div className="sticky top-20 max-h-[calc(100vh-5rem)] overflow-y-auto pb-4">
           <FilterWrapper
-            statistics={statistics}
-            currentStatistics={currentStatistics}
+            statistics={statistics || defaultStats}
+            currentStatistics={currentDisplayStatistics}
             showTags={showTags}
             setShowTags={setShowTags}
             resetAllFilters={resetAllFilters}
@@ -201,7 +242,7 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
             onClearPriceRange={handleClearPriceRange}
             hasPriceRangeFilter={hasPriceRangeFilter}
             totalResultsCount={results.length}
-            filteredResultsCount={priceFilteredResults.length}
+            filteredResultsCount={displayResults.length}
           />
         </div>
       </div>
@@ -210,11 +251,12 @@ const ResultsContainer: React.FC<ResultsContainerProps> = ({
       <div className="md:col-span-4">
         <ResultsContent
           results={results}
-          filteredResults={priceFilteredResults}
+          filteredResults={displayResults}
           isLoading={isLoading}
           error={error}
           currentSearchKeyword={currentSearchKeyword}
-          statistics={statistics}
+          statistics={statistics || defaultStats}
+          currentStatistics={currentDisplayStatistics}
           totalCount={totalCount}
           selectedItems={selectedItems}
           toggleItemSelection={toggleItemSelection}

@@ -22,6 +22,7 @@ interface ResultsContentProps {
   error: string | null;
   currentSearchKeyword: string;
   statistics: Statistics;
+  currentStatistics?: Statistics;
   totalCount: number;
   selectedItems: Set<string>;
   toggleItemSelection: (id: string) => void;
@@ -54,6 +55,7 @@ const ResultsContent: React.FC<ResultsContentProps> = ({
   error,
   currentSearchKeyword,
   statistics,
+  currentStatistics,
   totalCount,
   selectedItems,
   toggleItemSelection,
@@ -88,16 +90,6 @@ const ResultsContent: React.FC<ResultsContentProps> = ({
   useEffect(() => {
     console.log(`Sort order changed to: ${sortOrder}`);
   }, [sortOrder]);
-
-  // 元の統計情報を保持する
-  const [originalStatistics, setOriginalStatistics] = useState<Statistics>(statistics);
-
-  // 統計情報が変更されたときに、元の統計情報を更新（フィルターが空の時のみ）
-  useEffect(() => {
-    if (priceRanges.length === 0) {
-      setOriginalStatistics(statistics);
-    }
-  }, [statistics, priceRanges.length]);
 
   // ソートリセット関数
   const resetSortOrder = useCallback(() => {
@@ -178,12 +170,12 @@ const ResultsContent: React.FC<ResultsContentProps> = ({
 
   return (
     <div className="results-content mb-8">
-      {/* 統計情報パネル - 常に元の統計情報を使用 */}
+      {/* 統計情報パネル */}
       <div className="mb-6">
         {!isLoading && filteredResults.length > 0 && (
           <div className="relative">
             <StatisticsPanel 
-              statistics={originalStatistics}
+              statistics={currentStatistics || statistics}
               onPriceRangeClick={handlePriceRangeClick}
               selectedPriceRanges={convertedPriceRanges}
               hasActiveFilters={priceRanges.length > 0}
